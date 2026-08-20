@@ -28,7 +28,7 @@ SECRET_KEY = os.environ.get(
 
 DEBUG = env_bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default="*")
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default="*") or ["*"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -124,3 +124,7 @@ if not DEBUG:
     SECURE_SSL_REDIRECT = True
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
+    # Terminate TLS at the host's proxy (Render/Railway/Fly etc.).
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    # Allow form POSTs from your own HTTPS domain(s).
+    CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")

@@ -1,0 +1,149 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-stone-950 text-stone-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FoodSnap — Intelligent Food Image Recognition & Recipes{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        amber: {
+                            400: '#fbbf24',
+                            500: '#f59e0b',
+                            600: '#d97706',
+                        },
+                        stone: {
+                            800: '#292524',
+                            900: '#1c1917',
+                            950: '#0c0a09',
+                        }
+                    },
+                    fontFamily: {
+                        serif: ['Georgia', 'Cambria', 'serif'],
+                        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Font Awesome / Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Slim custom dark scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(12, 10, 9, 0.8); }
+        ::-webkit-scrollbar-thumb { background: rgba(120, 113, 108, 0.4); border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(245, 158, 11, 0.6); }
+        .overscroll-contain { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-stone-950 text-stone-100 font-sans antialiased selection:bg-amber-500 selection:text-stone-950">
+
+    <!-- Global Header / Navigation -->
+    <header class="sticky top-0 z-40 bg-stone-900/90 backdrop-blur-md border-b border-stone-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <!-- Logo -->
+                <a href="{% url 'home' %}" class="flex items-center gap-3 group">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-stone-950 font-bold shadow-lg shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                        <i class="fa-solid fa-camera text-lg"></i>
+                    </div>
+                    <div>
+                        <span class="text-xl font-bold font-serif text-white tracking-tight group-hover:text-amber-400 transition-colors">FoodSnap</span>
+                        <span class="block text-[10px] text-stone-400 -mt-1 font-mono">AI Food Scanner</span>
+                    </div>
+                </a>
+
+                <!-- Desktop Navigation Links -->
+                <nav class="hidden md:flex items-center gap-1.5 bg-stone-950/60 p-1 rounded-2xl border border-stone-800/80">
+                    <a href="{% url 'home' %}" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 {% if request.resolver_match.url_name == 'home' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/60{% endif %}">
+                        <i class="fa-solid fa-camera"></i>
+                        <span>Scanner</span>
+                    </a>
+                    <a href="{% url 'recipes' %}" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 {% if request.resolver_match.url_name == 'recipes' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/60{% endif %}">
+                        <i class="fa-solid fa-book-open"></i>
+                        <span>Recipe Catalog</span>
+                    </a>
+                    <a href="{% url 'nearby' %}" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 {% if request.resolver_match.url_name == 'nearby' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/60{% endif %}">
+                        <i class="fa-solid fa-location-dot"></i>
+                        <span>Nearby Places</span>
+                    </a>
+                    <a href="{% url 'ai_verifier' %}" class="px-3.5 py-1.5 rounded-xl text-xs font-semibold transition-all flex items-center gap-2 {% if request.resolver_match.url_name == 'ai_verifier' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/60{% endif %}">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>AI Verifier</span>
+                    </a>
+                </nav>
+
+                <!-- Auth / User Actions -->
+                <div class="flex items-center gap-3">
+                    {% if user.is_authenticated %}
+                    <a href="{% url 'dashboard' %}" class="hidden sm:flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 border border-stone-700 transition-colors">
+                        <i class="fa-solid fa-chart-pie text-amber-400"></i>
+                        <span>Dashboard</span>
+                    </a>
+                    <a href="{% url 'favorites' %}" class="p-2 rounded-xl bg-stone-800 hover:bg-stone-700 text-amber-400 border border-stone-700 transition-colors relative" title="My Saved Recipes">
+                        <i class="fa-solid fa-bookmark"></i>
+                    </a>
+                    <form method="post" action="{% url 'logout' %}" class="inline">
+                        {% csrf_token %}
+                        <button type="submit" class="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 text-xs font-semibold border border-stone-800 transition-colors">
+                            Log out
+                        </button>
+                    </form>
+                    {% else %}
+                    <a href="{% url 'login' %}" class="px-3 py-1.5 rounded-xl text-xs font-semibold text-stone-300 hover:text-white transition-colors">
+                        Login
+                    </a>
+                    <a href="{% url 'register' %}" class="px-4 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-md shadow-amber-500/20 transition-all">
+                        Sign up
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Alert / Toast Messages -->
+    {% if messages %}
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4 w-full">
+        {% for message in messages %}
+        <div class="p-3.5 rounded-xl text-xs font-medium border flex items-center justify-between gap-3 mb-2 {% if message.tags == 'error' %}bg-rose-950/40 border-rose-500/40 text-rose-200{% elif message.tags == 'success' %}bg-emerald-950/40 border-emerald-500/40 text-emerald-200{% else %}bg-amber-950/40 border-amber-500/40 text-amber-200{% endif %}">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-circle-info"></i>
+                <span>{{ message }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Main Dynamic Content Block -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-stone-800 bg-stone-900 py-6 text-center text-xs text-stone-500 mt-auto">
+        <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+                <span class="font-bold text-stone-300 font-serif text-sm">FoodSnap</span>
+                <span>—</span>
+                <span>Intelligent Food Image Recognition & Recipe System</span>
+            </div>
+            <div class="flex items-center gap-4 text-[11px] text-stone-400">
+                <span>Cosine Distance Matching</span>
+                <span>•</span>
+                <span>Spatial HSV Vector Extractor</span>
+                <span>•</span>
+                <span>Global Restaurant Radar</span>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

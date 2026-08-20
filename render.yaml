@@ -1,0 +1,19 @@
+# Render Blueprint for the FoodSnap Django web service.
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: foodsnap-django
+    runtime: docker
+    repo: https://github.com/NeonFx22/Foodsnap.git
+    branch: django
+    plan: free
+    healthCheckPath: /
+    envVars:
+      - key: DJANGO_DEBUG
+        value: "0"
+      - key: DJANGO_ALLOWED_HOSTS
+        value: "*"
+      - key: DJANGO_CSRF_TRUSTED_ORIGINS
+        value: "https://foodsnap-django.onrender.com"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true

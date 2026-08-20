@@ -1,7 +1,7 @@
-{% load static %}
-{% extends "main/base.html" %}
+﻿{% extends "main/base.html" %}`r`n{% load static %}
 
-{% block title %}Dashboard — FoodSnap{% endblock %}
+
+{% block title %}Dashboard â€” FoodSnap{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -73,7 +73,7 @@
                         <td class="py-3 px-4">
                             <img src="{{ record.image.url }}" alt="upload" class="w-12 h-12 rounded-xl object-cover border border-stone-800">
                         </td>
-                        <td class="py-3 px-4 font-bold text-white">{{ record.top_match|default:"—" }}</td>
+                        <td class="py-3 px-4 font-bold text-white">{{ record.top_match|default:"â€”" }}</td>
                         <td class="py-3 px-4 text-amber-400 font-mono font-bold">{% widthratio record.confidence 1 100 %}%</td>
                         <td class="py-3 px-4 font-mono">{{ record.inference_ms|floatformat:1 }} ms</td>
                         <td class="py-3 px-4 text-stone-500">{{ record.created_at }}</td>

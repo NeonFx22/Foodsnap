@@ -121,7 +121,7 @@ if not DEBUG:
     SECURE_HSTS_SECONDS = 31_536_000          # 1 year
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
-    SECURE_SSL_REDIRECT = True
+    SECURE_SSL_REDIRECT = False  # Render's proxy terminates TLS and redirects; Django must answer 2xx on HTTP for health checks
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     # Terminate TLS at the host's proxy (Render/Railway/Fly etc.).

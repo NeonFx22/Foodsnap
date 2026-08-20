@@ -17,7 +17,9 @@ class LoginForm(forms.Form):
 
 
 class RegisterForm(UserCreationForm):
-    email = forms.EmailField(required=False)
+    # Collected for future use (password reset, notifications) but not required
+    # since no email verification flow is implemented yet.
+    email = forms.EmailField(required=False, help_text="Optional. Used for password recovery.")
 
     class Meta:
         model = User

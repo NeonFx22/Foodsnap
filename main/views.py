@@ -1,16 +1,25 @@
 import base64
+import io
+import json
+import logging
+import os
 import string
 import time
+import urllib.parse
+import urllib.request
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponseRedirect
+from django.db.models import Avg
+from django.http import HttpResponseRedirect, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.csrf import csrf_exempt
 from PIL import Image
 
+from .decorators import rate_limit
 from .forms import ImageUploadForm, LoginForm, RegisterForm
 from .ml_utils import get_recipes_data, match_image
 from .models import FavoriteRecipe, UploadRecord
@@ -18,23 +27,21 @@ from .models import FavoriteRecipe, UploadRecord
 # Caps how many file bytes are accepted (e.g. 10 MB).
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 
-RECIPE_FIELDS = ("calories", "cooking_time", "ingredients", "directions")
 
-
-def _build_recipe_card(recipe_name: str, confidence: float) -> list | None:
-    """Build the list shape the templates expect, or None if unknown recipe."""
+def _build_recipe_card(recipe_name: str, confidence: float) -> dict | None:
+    """Build the dictionary shape the templates expect, or None if unknown recipe."""
     matching = [r for r in get_recipes_data() if r["name"] == recipe_name]
     if not matching:
         return None
     recipe = matching[0]
-    return [
-        string.capwords(recipe_name),
-        round(confidence * 100, 1),
-        recipe.get("calories", ""),
-        recipe.get("cooking_time", ""),
-        recipe.get("ingredients", ""),
-        recipe.get("directions", ""),
-    ]
+    return {
+        "name": string.capwords(recipe_name),
+        "confidence": round(confidence * 100, 1),
+        "calories": recipe.get("calories", "Unknown calories"),
+        "cooking_time": recipe.get("cooking_time", "Unknown time"),
+        "ingredients": recipe.get("ingredients", ""),
+        "directions": recipe.get("directions", ""),
+    }
 
 
 def home_page(request):
@@ -152,21 +159,15 @@ def logout_view(request):
 @login_required
 def dashboard_view(request):
     if request.user.is_staff:
-        recent_uploads = UploadRecord.objects.all()[:50]
+        recent_uploads = UploadRecord.objects.all().order_by("-created_at")[:50]
         total = UploadRecord.objects.count()
-        avg = (
-            sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
-            if recent_uploads
-            else 0
-        )
+        avg_dict = UploadRecord.objects.aggregate(avg_inference=Avg('inference_ms'))
+        avg = avg_dict["avg_inference"] or 0
     else:
-        recent_uploads = UploadRecord.objects.filter(user=request.user)[:50]
+        recent_uploads = UploadRecord.objects.filter(user=request.user).order_by("-created_at")[:50]
         total = UploadRecord.objects.filter(user=request.user).count()
-        avg = (
-            sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
-            if recent_uploads
-            else 0
-        )
+        avg_dict = UploadRecord.objects.filter(user=request.user).aggregate(avg_inference=Avg('inference_ms'))
+        avg = avg_dict["avg_inference"] or 0
 
     return render(
         request,
@@ -207,15 +208,11 @@ def favorite_toggle(request, recipe_name: str):
     # recipe_name arrives URL-encoded (slugified), e.g. "jollof-rice".
     recipe_name = recipe_name.replace("-", " ").strip()
 
-    exists = FavoriteRecipe.objects.filter(
+    obj, created = FavoriteRecipe.objects.get_or_create(
         user=request.user, recipe_name=recipe_name
-    ).exists()
-    if exists:
-        FavoriteRecipe.objects.filter(
-            user=request.user, recipe_name=recipe_name
-        ).delete()
-    else:
-        FavoriteRecipe.objects.create(user=request.user, recipe_name=recipe_name)
+    )
+    if not created:
+        obj.delete()
 
     next_url = request.POST.get("next") or request.GET.get("next")
     if not next_url or not url_has_allowed_host_and_scheme(
@@ -229,7 +226,7 @@ def nearby_places_view(request):
     """Real-time nearby restaurants, food markets, bakeries, and eateries based on user's query and city."""
     import urllib.parse
     import urllib.request
-    import json
+    import logging
 
     food_query = request.GET.get("q", "").strip()
     city = request.GET.get("city", "Your Area").strip()
@@ -263,20 +260,13 @@ def nearby_places_view(request):
                     "cuisine": cuisine if cuisine != "All" else "Local & Traditional Cuisine",
                     "address": full_address,
                     "city": city_name,
-                    "rating": 4.7,
-                    "reviews": 120,
                     "price": "$$",
-                    "distance_km": 1.5,
-                    "is_open": True,
-                    "hours": "10:00 AM – 10:00 PM",
-                    "phone": "+234 800 000 0000",
                     "specialty": food_query or "Chef Daily Special",
                     "google_maps_url": f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(f'{raw_name} {full_address}')}",
-                    "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
                     "source": "OpenStreetMap Live Radar",
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("OSM Search failed: %s", e)
 
     return render(
         request,
@@ -372,98 +362,17 @@ def ai_verifier_view(request):
     )
 
 
-AUTHENTIC_DATASET_DICT = {
-    "amala": {
-        "name": "Amala",
-        "originalDatasetUrl": "/dataset/images/amala.jpg",
-        "verifiedWebUrl": "/dataset/images/amala.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Velvety dark brown yam flour swallow (Amala isu)", "Served with Ewedu and Gbegiri soup", "Silky dark consistency"],
-        "culinaryNotes": "Traditional Yoruba swallow made from dried yam flour (elubo), whipped in hot water to dark velvet consistency."
-    },
-    "jollof-rice": {
-        "name": "Jollof Rice",
-        "originalDatasetUrl": "/dataset/images/jollof-rice.jpg",
-        "verifiedWebUrl": "/dataset/images/jollof-rice.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Glossy smoky orange-red long grain rice", "Roasted red bell pepper reduction", "Party-style bottom-pot caramelization"],
-        "culinaryNotes": "Distinct grains coated in reduced tomato-tatashe paste with thyme and bay aromatics."
-    },
-    "egusi-soup": {
-        "name": "Egusi Soup",
-        "originalDatasetUrl": "/dataset/images/egusi-soup.jpg",
-        "verifiedWebUrl": "/dataset/images/egusi-soup.jpg",
-        "authenticityScore": 98,
-        "visualHallmarks": ["Golden melon seed curds/lumps", "Rich red palm oil separation", "Braised assorted meats and ugu greens"],
-        "culinaryNotes": "Textured melon seed protein cakes simmered in palm oil with stockfish and leafy greens."
-    },
-    "suya": {
-        "name": "Suya",
-        "originalDatasetUrl": "/dataset/images/suya.jpg",
-        "verifiedWebUrl": "/dataset/images/suya.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Thinly sliced skewered beef with char marks", "Yaji kuli-kuli peanut spice dusting", "Sliced red onions and fresh tomatoes"],
-        "culinaryNotes": "Open-flame charcoal grilled beef dusted with authentic Northern Nigerian yaji pepper."
-    },
-    "efo-riro": {
-        "name": "Efo Riro",
-        "originalDatasetUrl": "/dataset/images/efo-riro.jpg",
-        "verifiedWebUrl": "/dataset/images/efo-riro.jpg",
-        "authenticityScore": 97,
-        "visualHallmarks": ["Rich emerald green shredded spinach/shoko", "Aromatic palm oil pepper base", "Smoked catfish and tender tripe"],
-        "culinaryNotes": "Yoruba vegetable stew prepared by tossing greens into seasoned fried pepper reduction."
-    },
-    "moin-moin": {
-        "name": "Moin Moin",
-        "originalDatasetUrl": "/dataset/images/moi-moi.jpg",
-        "verifiedWebUrl": "/dataset/images/moi-moi.jpg",
-        "authenticityScore": 98,
-        "visualHallmarks": ["Steamed golden-orange bean pudding loaf", "Smooth silky texture", "Hard-boiled egg or fish slice inclusion"],
-        "culinaryNotes": "Pureed peeled black-eyed peas steamed in banana leaves or ramekins with peppers and crayfish."
-    },
-    "chin-chin": {
-        "name": "Chin Chin",
-        "originalDatasetUrl": "/dataset/images/chin-chin.jpg",
-        "verifiedWebUrl": "/dataset/images/chin-chin.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Crispy golden-brown cube pastries", "Nutmeg-infused sugar glaze", "Uniform snack-sized crunch"],
-        "culinaryNotes": "Deep-fried West African pastry cubes seasoned with grated nutmeg and butter."
-    },
-    "pounded-yam": {
-        "name": "Pounded Yam",
-        "originalDatasetUrl": "/dataset/images/pounded-yam.jpg",
-        "verifiedWebUrl": "/dataset/images/pounded-yam.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Silky alabaster white swallow mound", "Pliable elastic texture", "Molded sphere serving presentation"],
-        "culinaryNotes": "Steamed African white yam pounded in a mortar until starchy, stretchy, and pillowy."
-    },
-    "spaghetti-bolognese": {
-        "name": "Spaghetti Bolognese",
-        "originalDatasetUrl": "/dataset/images/spaghetti-bolognese.jpg",
-        "verifiedWebUrl": "/dataset/images/spaghetti-bolognese.jpg",
-        "authenticityScore": 98,
-        "visualHallmarks": ["Al dente pasta strands", "Rich slow-cooked minced beef ragu", "Parmigiano-Reggiano dusting"],
-        "culinaryNotes": "Classic Italian ragù alla bolognese clinging to long pasta with fresh basil accents."
-    },
-    "grilled-chicken": {
-        "name": "Grilled Chicken",
-        "originalDatasetUrl": "/dataset/images/grilled-chicken.jpg",
-        "verifiedWebUrl": "/dataset/images/grilled-chicken.jpg",
-        "authenticityScore": 97,
-        "visualHallmarks": ["Golden-brown charred skin", "Herb and paprika spice rub", "Juicy bone-in roast presentation"],
-        "culinaryNotes": "Flame-roasted seasoned poultry with caramelized exterior and tender interior."
-    },
-    "vegetable-salad": {
-        "name": "Vegetable Salad",
-        "originalDatasetUrl": "/dataset/images/vegetable-salad.jpg",
-        "verifiedWebUrl": "/dataset/images/vegetable-salad.jpg",
-        "authenticityScore": 96,
-        "visualHallmarks": ["Crisp romaine and iceberg leaves", "Sliced English cucumbers and ruby cherry tomatoes", "Golden boiled egg wedges and sweetcorn"],
-        "culinaryNotes": "Vibrant chilled fresh produce composed on a platter with light vinaigrette."
-    }
-}
+def get_authentic_dataset():
+    json_path = os.path.join(os.path.dirname(__file__), "data", "dish_data.json")
+    try:
+        with open(json_path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        logging.warning("Failed to load authentic dish data: %s", e)
+        return {}
 
 
+@rate_limit(max_requests=20, window_seconds=60)
 def api_geocode(request):
     """Reverse geocodes coordinates or geocodes city/address queries in Django."""
     import json
@@ -501,8 +410,8 @@ def api_geocode(request):
                         "country": country,
                         "method": "search"
                     })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("Nominatim search failed: %s", e)
 
         return JsonResponse({
             "lat": 6.5244,
@@ -538,8 +447,8 @@ def api_geocode(request):
                     "country": country,
                     "method": "gps"
                 })
-        except Exception:
-            pass
+        except Exception as e:
+            logging.warning("GPS Nominatim lookup failed: %s", e)
 
         return JsonResponse({
             "lat": float(lat_str),
@@ -553,6 +462,8 @@ def api_geocode(request):
     return JsonResponse({"error": "Missing parameters"}, status=400)
 
 
+@csrf_exempt
+@rate_limit(max_requests=20, window_seconds=60)
 def api_nearby_places(request):
     """Dynamic nationwide and global restaurant radar in Django."""
     import json
@@ -565,7 +476,8 @@ def api_nearby_places(request):
     if request.method == "POST":
         try:
             body = json.loads(request.body.decode("utf-8")) if request.body else {}
-        except Exception:
+        except Exception as e:
+            logging.warning("JSON decode failed in api_nearby_places: %s", e)
             body = {}
         query = body.get("query", "").strip()
         lat = body.get("lat", 6.5244)
@@ -605,16 +517,11 @@ def api_nearby_places(request):
                     "address": full_address,
                     "city": city_name,
                     "country": addr.get("country", ""),
-                    "rating": 4.7,
-                    "distance_km": 1.2,
-                    "price_level": "$$",
                     "google_maps_url": f"https://www.google.com/maps/search/?api=1&query={urllib.parse.quote(f'{raw_name} {full_address}')}",
                     "specialtyDish": query or "Signature House Specialty",
-                    "specialtyPrice": "₦4,500 / $12",
-                    "description": f"Popular food spot serving fresh {query or 'local dishes'} at {full_address}."
                 })
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("OSM Search failed in api_nearby_places: %s", e)
 
     return JsonResponse({
         "status": "success",
@@ -625,31 +532,47 @@ def api_nearby_places(request):
     })
 
 
+@rate_limit(max_requests=50, window_seconds=60)
 def api_dataset_images(request):
     """Returns all authentic dataset images and metadata in Django."""
     from django.http import JsonResponse
     return JsonResponse({
         "success": True,
-        "images": AUTHENTIC_DATASET_DICT
+        "images": get_authentic_dataset()
     })
 
 
+@csrf_exempt
+@rate_limit(max_requests=20, window_seconds=60)
 def api_verify_image(request):
     """Verifies dish authenticity and visual hallmarks in Django."""
     import json
+    import time
     from django.http import JsonResponse
     from django.views.decorators.csrf import csrf_exempt
 
     try:
         data = json.loads(request.body.decode("utf-8")) if request.body else {}
-    except Exception:
+    except Exception as e:
+        logging.warning("JSON decode failed in api_verify_image: %s", e)
         data = {}
 
     dish_name = data.get("dishName", "")
     current_image_url = data.get("currentImageUrl", "")
     recipe_id = data.get("recipeId", "").lower() or dish_name.lower().replace(" ", "-")
 
-    known_data = AUTHENTIC_DATASET_DICT.get(recipe_id, {})
+    dataset = get_authentic_dataset()
+    
+    if recipe_id not in dataset:
+        return JsonResponse({
+            "dishName": dish_name,
+            "recipeId": recipe_id,
+            "currentImageUrl": current_image_url,
+            "isAuthentic": False,
+            "error": "Dish not found in authentic dataset."
+        }, status=404)
+
+    known_data = dataset.get(recipe_id, {})
 
     result = {
         "dishName": dish_name,
@@ -673,6 +596,7 @@ def api_verify_image(request):
     return JsonResponse(result)
 
 
+@rate_limit(max_requests=20, window_seconds=60)
 def api_search_food_image(request):
     """Searches authentic dish image reference in Django."""
     import json
@@ -680,12 +604,14 @@ def api_search_food_image(request):
 
     try:
         data = json.loads(request.body.decode("utf-8")) if request.body else {}
-    except Exception:
+    except Exception as e:
+        logging.warning("JSON decode failed in api_search_food_image: %s", e)
         data = {}
 
     query = data.get("query", "")
     normalized_key = query.lower().replace(" ", "-")
-    known_data = AUTHENTIC_DATASET_DICT.get(normalized_key, {})
+    dataset = get_authentic_dataset()
+    known_data = dataset.get(normalized_key, {})
 
     return JsonResponse({
         "query": query,
@@ -697,6 +623,8 @@ def api_search_food_image(request):
     })
 
 
+@csrf_exempt
+@rate_limit(max_requests=10, window_seconds=60)
 def api_analyze_food(request):
     """Analyzes food image upload via Python/ML in Django."""
     import base64
@@ -728,12 +656,12 @@ def api_analyze_food(request):
             card = _build_recipe_card(name, confidence)
             if card:
                 formatted_matches.append({
-                    "name": card[0],
-                    "confidence": card[1],
-                    "calories": card[2],
-                    "cookingTime": card[3],
-                    "ingredients": card[4],
-                    "directions": card[5],
+                    "name": card["name"],
+                    "confidence": card["confidence"],
+                    "calories": card["calories"],
+                    "cookingTime": card["cooking_time"],
+                    "ingredients": card["ingredients"],
+                    "directions": card["directions"],
                 })
 
         return JsonResponse({
@@ -745,6 +673,8 @@ def api_analyze_food(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+@csrf_exempt
+@rate_limit(max_requests=15, window_seconds=60)
 def api_global_recipe_search(request):
     """Deep Global Recipe Research endpoint returning authentic recipes and accurate images."""
     import json
@@ -756,7 +686,8 @@ def api_global_recipe_search(request):
 
     try:
         data = json.loads(request.body.decode("utf-8")) if request.body else {}
-    except Exception:
+    except Exception as e:
+        logging.warning("JSON decode failed in api_global_recipe_search: %s", e)
         data = {}
 
     query = (data.get("query") or request.GET.get("q") or "").strip()
@@ -768,7 +699,8 @@ def api_global_recipe_search(request):
     normalized_id = query.lower().replace(" ", "-")
 
     # Check if exists in dataset
-    known = AUTHENTIC_DATASET_DICT.get(normalized_id)
+    dataset = get_authentic_dataset()
+    known = dataset.get(normalized_id)
     img_url = known["originalDatasetUrl"] if known else "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"
 
     # Fetch Wikipedia description & photo if available
@@ -787,8 +719,8 @@ def api_global_recipe_search(request):
                 img_url = wiki_data["originalimage"]["source"]
             elif wiki_data.get("thumbnail", {}).get("source"):
                 img_url = wiki_data["thumbnail"]["source"]
-    except Exception:
-        pass
+    except Exception as e:
+        logging.warning("Wikipedia API failed: %s", e)
 
     recipe = {
         "id": f"recipe-{normalized_id}",
@@ -804,6 +736,7 @@ def api_global_recipe_search(request):
         "calories": "450 kcal / serving",
         "imageUrl": img_url,
         "description": wiki_desc or f"An authentic preparation of {clean_name} prepared according to traditional culinary standards and authentic regional techniques.",
+        "aiDisclaimer": "Note: This recipe is AI-generated based on internet research and may not reflect traditional methods perfectly.",
         "flavorProfile": ["Savory", "Aromatic", "Authentic", "Rich"],
         "dietaryTags": ["Authentic Recipe", "Fresh Ingredients", "Heritage"],
         "ingredientsList": [

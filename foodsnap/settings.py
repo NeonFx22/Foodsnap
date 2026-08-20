@@ -7,7 +7,11 @@ Production-safe by default: read configuration from environment variables
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+_INSECURE_DEFAULT_KEY = "django-insecure-local-dev-key-change-me-in-production"
 
 
 def env_bool(name: str, default: bool = False) -> bool:
@@ -21,14 +25,19 @@ def env_list(name: str, default: str = "") -> list:
     return [item.strip() for item in os.environ.get(name, default).split(",") if item.strip()]
 
 
-SECRET_KEY = os.environ.get(
-    "DJANGO_SECRET_KEY",
-    "django-insecure-local-dev-key-change-me-in-production",
-)
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", _INSECURE_DEFAULT_KEY)
 
 DEBUG = env_bool("DJANGO_DEBUG", default=True)
 
-ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS", default="*") or ["*"]
+# In production (DEBUG=False) require explicit hosts; in dev allow everything.
+ALLOWED_HOSTS = env_list("DJANGO_ALLOWED_HOSTS") or (["*"] if DEBUG else [])
+
+# Safety check: refuse to start in production with the insecure default key.
+if not DEBUG and SECRET_KEY == _INSECURE_DEFAULT_KEY:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY must be set to a unique, unpredictable value in production. "
+        'Generate one with: python -c "import secrets; print(secrets.token_urlsafe(50))"'
+    )
 
 INSTALLED_APPS = [
     "django.contrib.admin",

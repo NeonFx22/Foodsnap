@@ -100,22 +100,23 @@ def _load_dataset_encodings():
     return encodings, names
 
 
+@lru_cache(maxsize=1)
 def get_recipes_data():
     """Load the structured recipe dataset (name, calories, ingredients, ...).
 
-    Returns an empty list if the file is missing or malformed.
+    Returns an empty tuple if the file is missing or malformed.
     Results are cached after the first successful load; call
     ``get_recipes_data.cache_clear()`` after updating the JSON file.
     """
-    if not hasattr(get_recipes_data, "_cache"):
-        if not RECIPES_PATH.exists():
-            return []
-        try:
-            with open(RECIPES_PATH, encoding="utf-8") as f:
-                get_recipes_data._cache = json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return []
-    return get_recipes_data._cache
+    if not RECIPES_PATH.exists():
+        return ()
+    try:
+        with open(RECIPES_PATH, encoding="utf-8") as f:
+            return tuple(json.load(f))
+    except (json.JSONDecodeError, OSError) as e:
+        import logging
+        logging.warning("Failed to load recipes data: %s", e)
+        return ()
 
 
 # --------------------------------------------------------------------------

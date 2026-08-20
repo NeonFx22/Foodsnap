@@ -18,6 +18,7 @@ const ai = new GoogleGenAI({
 
 // In-memory cache for AI responses to prevent repeated calls
 const aiResponseCache = new Map<string, any>();
+const MAX_CACHE_SIZE = 100;
 
 // Helper to safely call Gemini with automatic fallback and caching
 async function callGeminiSafely(
@@ -37,7 +38,7 @@ async function callGeminiSafely(
   }
 
   // Attempt with primary model first, fallback to alternate flash model
-  const candidateModels = ['gemini-3.7-flash', 'gemini-flash-latest'];
+  const candidateModels = ['gemini-2.0-flash', 'gemini-flash-latest'];
 
   for (const model of candidateModels) {
     try {
@@ -59,7 +60,10 @@ async function callGeminiSafely(
       const groundingChunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
       const result = { text, groundingChunks };
 
-      // Cache successful response
+      if (aiResponseCache.size >= MAX_CACHE_SIZE) {
+        const firstKey = aiResponseCache.keys().next().value;
+        if (firstKey) aiResponseCache.delete(firstKey);
+      }
       aiResponseCache.set(cacheKey, result);
       return result;
     } catch (err: any) {

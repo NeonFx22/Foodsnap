@@ -1,0 +1,13 @@
+.git
+.gitignore
+.venv
+venv
+node_modules
+dist
+staticfiles
+db.sqlite3
+*.log
+.vscode
+.github
+Dockerfile
+.dockerignore

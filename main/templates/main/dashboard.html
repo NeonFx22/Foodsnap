@@ -1,0 +1,94 @@
+{% load static %}
+{% extends "main/base.html" %}
+
+{% block title %}Dashboard — FoodSnap{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <!-- Dashboard Header -->
+    <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+                <span class="px-3 py-1 rounded-full text-xs font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                    User Telemetry &amp; Upload History
+                </span>
+                <h1 class="text-2xl sm:text-3xl font-bold font-serif text-white mt-2">
+                    Welcome back, {{ user.username }}!
+                </h1>
+                <p class="text-xs text-stone-400 mt-1">
+                    Manage your food scan logs, average inference latencies, and saved culinary favorites.
+                </p>
+            </div>
+
+            <a href="{% url 'favorites' %}" class="px-4 py-2 rounded-2xl bg-amber-500 hover:bg-amber-400 text-stone-950 font-bold text-xs shadow-md shadow-amber-500/20 transition-all flex items-center gap-1.5 self-start sm:self-auto">
+                <i class="fa-solid fa-bookmark"></i>
+                <span>My Saved Recipes</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-2 shadow-lg">
+            <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">Total Scans Processed</span>
+            <div class="text-3xl font-extrabold text-white font-mono">{{ total_uploads }}</div>
+            <p class="text-[11px] text-stone-500">{% if not user.is_staff %}Your personal scan history{% else %}Platform total scans{% endif %}</p>
+        </div>
+
+        <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-2 shadow-lg">
+            <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">Avg Inference Latency</span>
+            <div class="text-3xl font-extrabold text-amber-400 font-mono">{{ avg_inference_ms }} ms</div>
+            <p class="text-[11px] text-stone-500">Spatial feature vector calculation speed</p>
+        </div>
+
+        <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 space-y-2 shadow-lg">
+            <span class="text-xs font-semibold text-stone-400 uppercase tracking-wider">Account Role</span>
+            <div class="text-2xl font-bold text-stone-200">{% if user.is_staff %}Staff Administrator{% else %}Verified User{% endif %}</div>
+            <p class="text-[11px] text-stone-500">{{ user.email|default:"Local session" }}</p>
+        </div>
+    </div>
+
+    <!-- Uploads History Table -->
+    <div class="bg-stone-900 border border-stone-800 rounded-3xl p-6 sm:p-8 space-y-4 shadow-xl">
+        <h2 class="text-lg font-bold text-white font-serif flex items-center gap-2">
+            <i class="fa-solid fa-clock-rotate-left text-amber-400"></i>
+            <span>Recent Uploads &amp; Matches</span>
+        </h2>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-stone-300">
+                <thead class="bg-stone-950 text-stone-400 uppercase font-mono text-[11px] border-b border-stone-800">
+                    <tr>
+                        <th class="py-3 px-4 rounded-l-xl">Image</th>
+                        <th class="py-3 px-4">Top Match</th>
+                        <th class="py-3 px-4">Confidence</th>
+                        <th class="py-3 px-4">Inference</th>
+                        <th class="py-3 px-4 rounded-r-xl">Date</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-stone-800/60">
+                    {% for record in recent_uploads %}
+                    <tr class="hover:bg-stone-950/40 transition-colors">
+                        <td class="py-3 px-4">
+                            <img src="{{ record.image.url }}" alt="upload" class="w-12 h-12 rounded-xl object-cover border border-stone-800">
+                        </td>
+                        <td class="py-3 px-4 font-bold text-white">{{ record.top_match|default:"—" }}</td>
+                        <td class="py-3 px-4 text-amber-400 font-mono font-bold">{% widthratio record.confidence 1 100 %}%</td>
+                        <td class="py-3 px-4 font-mono">{{ record.inference_ms|floatformat:1 }} ms</td>
+                        <td class="py-3 px-4 text-stone-500">{{ record.created_at }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="py-8 text-center text-stone-500">
+                            No scans recorded yet. Upload a dish photo on the <a href="{% url 'home' %}" class="text-amber-400 underline">scanner page</a>.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

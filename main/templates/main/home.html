@@ -1,7 +1,7 @@
-{% load static %}
-{% extends "main/base.html" %}
+﻿{% extends "main/base.html" %}`r`n{% load static %}
 
-{% block title %}FoodSnap — Camera Scanner &amp; Food Recognition{% endblock %}
+
+{% block title %}FoodSnap â€” Camera Scanner &amp; Food Recognition{% endblock %}
 
 {% block content %}
 <div class="space-y-8">
@@ -209,7 +209,7 @@
                     <i class="fa-solid fa-layer-group text-lg"></i>
                 </div>
                 <div>
-                    <h2 class="text-xl font-bold font-serif text-white">Spatial 4×4 RGB &amp; HSV Color Decomposition</h2>
+                    <h2 class="text-xl font-bold font-serif text-white">Spatial 4Ã—4 RGB &amp; HSV Color Decomposition</h2>
                     <p class="text-xs text-stone-400">80-Dimensional color histogram analysis matrix</p>
                 </div>
             </div>
@@ -222,7 +222,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <!-- 4x4 Grid preview -->
             <div class="p-6 bg-stone-950 rounded-2xl border border-stone-800 flex flex-col items-center justify-center space-y-3">
-                <span class="text-xs font-mono text-stone-400">4×4 Spatial Grid Patches:</span>
+                <span class="text-xs font-mono text-stone-400">4Ã—4 Spatial Grid Patches:</span>
                 <div class="grid grid-cols-4 gap-2">
                     <div class="w-10 h-10 rounded-lg bg-amber-700/80 border border-amber-500/40"></div>
                     <div class="w-10 h-10 rounded-lg bg-orange-600/80 border border-orange-500/40"></div>
@@ -241,20 +241,20 @@
                     <div class="w-10 h-10 rounded-lg bg-red-800/80 border border-red-500/40"></div>
                     <div class="w-10 h-10 rounded-lg bg-stone-800 border border-stone-700"></div>
                 </div>
-                <span class="text-[11px] font-mono text-stone-500">16 Spatial Cells × (3 RGB + 2 HSV) = 80 Dimensions</span>
+                <span class="text-[11px] font-mono text-stone-500">16 Spatial Cells Ã— (3 RGB + 2 HSV) = 80 Dimensions</span>
             </div>
 
             <!-- Mathematical Explanation -->
             <div class="space-y-3 text-xs text-stone-300 leading-relaxed">
                 <p>
-                    Unlike brute-force models that ignore composition, FoodSnap splits food images into an equidistant 4×4 spatial matrix, measuring local chromaticity, saturation, and luminance.
+                    Unlike brute-force models that ignore composition, FoodSnap splits food images into an equidistant 4Ã—4 spatial matrix, measuring local chromaticity, saturation, and luminance.
                 </p>
                 <p>
                     This spatial awareness lets FoodSnap differentiate between similar-colored ingredients (such as tomato stew vs. palm oil soups) based on where the ingredients sit on the plate.
                 </p>
                 <div class="p-3 bg-stone-950 rounded-xl border border-stone-800 flex items-center justify-between text-xs font-mono">
                     <span class="text-stone-400">Vector Cosine Metric:</span>
-                    <span class="text-amber-400 font-bold">cos(θ) = (A · B) / (||A|| ||B||)</span>
+                    <span class="text-amber-400 font-bold">cos(Î¸) = (A Â· B) / (||A|| ||B||)</span>
                 </div>
             </div>
         </div>

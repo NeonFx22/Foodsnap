@@ -94,16 +94,18 @@ USE_TZ = True
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
-    BASE_DIR / "public",
-    BASE_DIR / "dist",
-    BASE_DIR / "dataset",
+    d for d in [
+        BASE_DIR / "public",
+        BASE_DIR / "dist",
+        BASE_DIR / "dataset",
+    ] if d.exists()
 ]
 STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": (
         {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}
         if DEBUG
-        else {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"}
+        else {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"}
     ),
 }
 

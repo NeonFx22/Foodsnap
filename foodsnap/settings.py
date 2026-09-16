@@ -37,12 +37,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "corsheaders",
     "main",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -145,3 +147,22 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {"django": {"handlers": ["console"], "level": "INFO", "propagate": False}},
 }
+
+# ── CORS (the React frontend is deployed on a different Render service/origin) ──
+# Comma-separated list of allowed origins, e.g.:
+#   CORS_ALLOWED_ORIGINS=https://foodsnap-react.onrender.com,http://localhost:5173
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    default="https://foodsnap-react.onrender.com,http://localhost:5173,http://localhost:3000",
+)
+# Allow any *.onrender.com preview/staging URL for this project too.
+CORS_ALLOWED_ORIGIN_REGEXES = env_list(
+    "CORS_ALLOWED_ORIGIN_REGEXES",
+    default=r"^https://foodsnap-.*\.onrender\.com$",
+)
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    default="https://foodsnap-react.onrender.com",
+)
+
+# ── Production security hardening ─────────────────────────────

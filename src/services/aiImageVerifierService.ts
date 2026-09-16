@@ -3,6 +3,7 @@
  * Continuously checks food photos across the project against authentic culinary standards,
  * compares visual hallmarks, and automatically applies verified corrections.
  */
+import { apiUrl } from '../config';
 
 export interface DishImageVerification {
   id: string;
@@ -267,7 +268,7 @@ class AIImageVerifierService {
     const existing = this.registry.get(id);
 
     try {
-      const response = await fetch('/api/ai/verify-image', {
+      const response = await fetch(apiUrl('/api/ai/verify-image'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

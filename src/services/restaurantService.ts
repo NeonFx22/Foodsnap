@@ -1,4 +1,5 @@
 import { getVerifiedFoodImage } from '../utils/foodImageHelper';
+import { apiUrl } from '../config';
 
 export interface RestaurantDish {
   name: string;
@@ -496,7 +497,7 @@ export async function detectUserLocation(): Promise<UserLocation> {
 
       // Reverse geocode coordinates via backend endpoint
       try {
-        const geoRes = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`, {
+        const geoRes = await fetch(apiUrl(`/api/geocode?lat=${lat}&lng=${lng}`), {
           signal: AbortSignal.timeout(3500)
         });
         if (geoRes.ok) {
@@ -564,7 +565,7 @@ export async function geocodeCityOrAddress(query: string): Promise<UserLocation 
   if (!clean) return null;
 
   try {
-    const res = await fetch(`/api/geocode?q=${encodeURIComponent(clean)}`, {
+    const res = await fetch(apiUrl(`/api/geocode?q=${encodeURIComponent(clean)}`), {
       signal: AbortSignal.timeout(4000)
     });
 
@@ -885,7 +886,7 @@ export async function searchNearbyRestaurants(
   // 2. Fetch AI live places with Google Search Grounding for this specific city/location
   let liveAiPlaces: Restaurant[] = [];
   try {
-    const aiPlacesRes = await fetch('/api/places/nearby', {
+    const aiPlacesRes = await fetch(apiUrl('/api/places/nearby'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

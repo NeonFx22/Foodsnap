@@ -1,5 +1,6 @@
 import { GlobalRecipe, Recipe } from '../types';
 import { getVerifiedFoodImage } from '../utils/foodImageHelper';
+import { apiUrl } from '../config';
 
 /**
  * Curated Authentic Global Recipes Database
@@ -891,7 +892,7 @@ export async function searchGlobalRecipes(
   let backendGlobalRecipe: GlobalRecipe | null = null;
   if (trimmed.length >= 2) {
     try {
-      const aiRes = await fetch('/api/recipes/global-search', {
+      const aiRes = await fetch(apiUrl('/api/recipes/global-search'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ query: trimmed, cuisine: cuisineFilter !== 'All' ? cuisineFilter : '' }),
@@ -1008,7 +1009,7 @@ export async function researchDishGlobally(dishName: string): Promise<GlobalReci
 
   // 4. Query Backend Global Recipe Research
   try {
-    const aiRes = await fetch('/api/recipes/global-search', {
+    const aiRes = await fetch(apiUrl('/api/recipes/global-search'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ query: clean }),

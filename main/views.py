@@ -9,6 +9,7 @@ from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.csrf import csrf_exempt
 from PIL import Image
 
 from .forms import ImageUploadForm, LoginForm, RegisterForm
@@ -553,13 +554,13 @@ def api_geocode(request):
     return JsonResponse({"error": "Missing parameters"}, status=400)
 
 
+@csrf_exempt
 def api_nearby_places(request):
     """Dynamic nationwide and global restaurant radar in Django."""
     import json
     import urllib.parse
     import urllib.request
     from django.http import JsonResponse
-    from django.views.decorators.csrf import csrf_exempt
 
     # Support both GET and POST
     if request.method == "POST":
@@ -634,11 +635,11 @@ def api_dataset_images(request):
     })
 
 
+@csrf_exempt
 def api_verify_image(request):
     """Verifies dish authenticity and visual hallmarks in Django."""
     import json
     from django.http import JsonResponse
-    from django.views.decorators.csrf import csrf_exempt
 
     try:
         data = json.loads(request.body.decode("utf-8")) if request.body else {}
@@ -673,6 +674,7 @@ def api_verify_image(request):
     return JsonResponse(result)
 
 
+@csrf_exempt
 def api_search_food_image(request):
     """Searches authentic dish image reference in Django."""
     import json
@@ -697,6 +699,7 @@ def api_search_food_image(request):
     })
 
 
+@csrf_exempt
 def api_analyze_food(request):
     """Analyzes food image upload via Python/ML in Django."""
     import base64
@@ -745,6 +748,7 @@ def api_analyze_food(request):
         return JsonResponse({"error": str(e)}, status=500)
 
 
+@csrf_exempt
 def api_global_recipe_search(request):
     """Deep Global Recipe Research endpoint returning authentic recipes and accurate images."""
     import json
@@ -752,7 +756,6 @@ def api_global_recipe_search(request):
     import urllib.parse
     import urllib.request
     from django.http import JsonResponse
-    from django.views.decorators.csrf import csrf_exempt
 
     try:
         data = json.loads(request.body.decode("utf-8")) if request.body else {}

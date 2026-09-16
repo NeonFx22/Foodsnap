@@ -1,0 +1,321 @@
+diff --git a/.env.example b/.env.example
+index 7975ade..3e05e1e 100644
+--- a/.env.example
++++ b/.env.example
+@@ -12,5 +12,11 @@ DJANGO_ALLOWED_HOSTS=*
+ # Optional: alternate sqlite filename
+ # DJANGO_DB_NAME=db.sqlite3
+ 
++# Origins allowed to call this API cross-origin (the deployed React frontend), comma-separated.
++CORS_ALLOWED_ORIGINS=https://foodsnap-react.onrender.com,http://localhost:5173
++
++# Trusted origins for CSRF-protected (non-API) views like /django-admin/.
++CSRF_TRUSTED_ORIGINS=https://foodsnap-react.onrender.com
++
+ # Gemini API Key for server-side AI dish verification & image search
+ GEMINI_API_KEY=
+diff --git a/Dockerfile b/Dockerfile
+index 4be9965..b163383 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -12,6 +12,8 @@ COPY . .
+ 
+ RUN python manage.py collectstatic --noinput
+ 
++RUN chmod +x entrypoint.sh
++
+ EXPOSE 8000
+ 
+-CMD ["gunicorn", "foodsnap.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
++CMD ["./entrypoint.sh"]
+diff --git a/entrypoint.sh b/entrypoint.sh
+new file mode 100644
+index 0000000..d0d0bfc
+--- /dev/null
++++ b/entrypoint.sh
+@@ -0,0 +1,6 @@
++#!/bin/sh
++set -e
++
++python manage.py migrate --noinput
++
++exec gunicorn foodsnap.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 3
+diff --git a/foodsnap/settings.py b/foodsnap/settings.py
+index 8c20c2e..82b8c82 100644
+--- a/foodsnap/settings.py
++++ b/foodsnap/settings.py
+@@ -37,12 +37,14 @@ INSTALLED_APPS = [
+     "django.contrib.sessions",
+     "django.contrib.messages",
+     "django.contrib.staticfiles",
++    "corsheaders",
+     "main",
+ ]
+ 
+ MIDDLEWARE = [
+     "django.middleware.security.SecurityMiddleware",
+     "whitenoise.middleware.WhiteNoiseMiddleware",
++    "corsheaders.middleware.CorsMiddleware",
+     "django.contrib.sessions.middleware.SessionMiddleware",
+     "django.middleware.common.CommonMiddleware",
+     "django.middleware.csrf.CsrfViewMiddleware",
+@@ -119,6 +121,23 @@ LOGOUT_REDIRECT_URL = "home"
+ # How many candidate recipes to return per upload.
+ TOP_RESULTS = 10
+ 
++# ── CORS (the React frontend is deployed on a different Render service/origin) ──
++# Comma-separated list of allowed origins, e.g.:
++#   CORS_ALLOWED_ORIGINS=https://foodsnap-react.onrender.com,http://localhost:5173
++CORS_ALLOWED_ORIGINS = env_list(
++    "CORS_ALLOWED_ORIGINS",
++    default="https://foodsnap-react.onrender.com,http://localhost:5173,http://localhost:3000",
++)
++# Allow any *.onrender.com preview/staging URL for this project too.
++CORS_ALLOWED_ORIGIN_REGEXES = env_list(
++    "CORS_ALLOWED_ORIGIN_REGEXES",
++    default=r"^https://foodsnap-.*\.onrender\.com$",
++)
++CSRF_TRUSTED_ORIGINS = env_list(
++    "CSRF_TRUSTED_ORIGINS",
++    default="https://foodsnap-react.onrender.com",
++)
++
+ # ── Production security hardening ─────────────────────────────
+ # These settings are only active when DEBUG is False. They address
+ # the warnings raised by `python manage.py check --deploy`.
+diff --git a/main/views.py b/main/views.py
+index 9452ecb..100d786 100644
+--- a/main/views.py
++++ b/main/views.py
+@@ -9,6 +9,7 @@ from django.http import HttpResponseRedirect
+ from django.shortcuts import get_object_or_404, redirect, render
+ from django.urls import reverse
+ from django.utils.http import url_has_allowed_host_and_scheme
++from django.views.decorators.csrf import csrf_exempt
+ from PIL import Image
+ 
+ from .forms import ImageUploadForm, LoginForm, RegisterForm
+@@ -553,13 +554,13 @@ def api_geocode(request):
+     return JsonResponse({"error": "Missing parameters"}, status=400)
+ 
+ 
++@csrf_exempt
+ def api_nearby_places(request):
+     """Dynamic nationwide and global restaurant radar in Django."""
+     import json
+     import urllib.parse
+     import urllib.request
+     from django.http import JsonResponse
+-    from django.views.decorators.csrf import csrf_exempt
+ 
+     # Support both GET and POST
+     if request.method == "POST":
+@@ -634,11 +635,11 @@ def api_dataset_images(request):
+     })
+ 
+ 
++@csrf_exempt
+ def api_verify_image(request):
+     """Verifies dish authenticity and visual hallmarks in Django."""
+     import json
+     from django.http import JsonResponse
+-    from django.views.decorators.csrf import csrf_exempt
+ 
+     try:
+         data = json.loads(request.body.decode("utf-8")) if request.body else {}
+@@ -673,6 +674,7 @@ def api_verify_image(request):
+     return JsonResponse(result)
+ 
+ 
++@csrf_exempt
+ def api_search_food_image(request):
+     """Searches authentic dish image reference in Django."""
+     import json
+@@ -697,6 +699,7 @@ def api_search_food_image(request):
+     })
+ 
+ 
++@csrf_exempt
+ def api_analyze_food(request):
+     """Analyzes food image upload via Python/ML in Django."""
+     import base64
+@@ -745,6 +748,7 @@ def api_analyze_food(request):
+         return JsonResponse({"error": str(e)}, status=500)
+ 
+ 
++@csrf_exempt
+ def api_global_recipe_search(request):
+     """Deep Global Recipe Research endpoint returning authentic recipes and accurate images."""
+     import json
+@@ -752,7 +756,6 @@ def api_global_recipe_search(request):
+     import urllib.parse
+     import urllib.request
+     from django.http import JsonResponse
+-    from django.views.decorators.csrf import csrf_exempt
+ 
+     try:
+         data = json.loads(request.body.decode("utf-8")) if request.body else {}
+diff --git a/render.yaml b/render.yaml
+new file mode 100644
+index 0000000..378d90b
+--- /dev/null
++++ b/render.yaml
+@@ -0,0 +1,17 @@
++services:
++  - type: web
++    name: foodsnap-django
++    runtime: docker
++    dockerfilePath: ./Dockerfile
++    plan: free
++    envVars:
++      - key: DJANGO_SECRET_KEY
++        generateValue: true
++      - key: DJANGO_DEBUG
++        value: "0"
++      - key: DJANGO_ALLOWED_HOSTS
++        value: foodsnap-django.onrender.com
++      - key: CORS_ALLOWED_ORIGINS
++        value: https://foodsnap-react.onrender.com
++      - key: CSRF_TRUSTED_ORIGINS
++        value: https://foodsnap-react.onrender.com
+diff --git a/requirements.txt b/requirements.txt
+index 95fd6ab..efdf674 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -6,6 +6,7 @@ beautifulsoup4>=4.12
+ requests>=2.31
+ whitenoise>=6.6
+ gunicorn>=21.0
++django-cors-headers>=4.3
+ 
+ # Optional:
+ #   - Deep-learning encoding / fine-tuning (needs Python 3.12 or older):
+diff --git a/src/config.ts b/src/config.ts
+new file mode 100644
+index 0000000..f76fe90
+--- /dev/null
++++ b/src/config.ts
+@@ -0,0 +1,17 @@
++/**
++ * Base URL of the Django backend API.
++ *
++ * In local dev this is left empty and Vite's dev server proxies `/api/*`
++ * to Django directly (see vite.config.ts). In production, set
++ * VITE_API_BASE_URL at build time (e.g. Render static site env var) to the
++ * deployed Django service's URL, since the React app and the Django API
++ * are deployed as two separate Render services with different origins.
++ *
++ * Example: VITE_API_BASE_URL=https://foodsnap-django.onrender.com
++ */
++export const API_BASE_URL: string = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
++
++/** Prefix a `/api/...` path with the configured backend origin. */
++export function apiUrl(path: string): string {
++  return `${API_BASE_URL}${path}`;
++}
+diff --git a/src/services/aiImageVerifierService.ts b/src/services/aiImageVerifierService.ts
+index f1ceb6d..270a5bb 100644
+--- a/src/services/aiImageVerifierService.ts
++++ b/src/services/aiImageVerifierService.ts
+@@ -3,6 +3,7 @@
+  * Continuously checks food photos across the project against authentic culinary standards,
+  * compares visual hallmarks, and automatically applies verified corrections.
+  */
++import { apiUrl } from '../config';
+ 
+ export interface DishImageVerification {
+   id: string;
+@@ -267,7 +268,7 @@ class AIImageVerifierService {
+     const existing = this.registry.get(id);
+ 
+     try {
+-      const response = await fetch('/api/ai/verify-image', {
++      const response = await fetch(apiUrl('/api/ai/verify-image'), {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({
+diff --git a/src/services/globalRecipeService.ts b/src/services/globalRecipeService.ts
+index b4aea25..36af47c 100644
+--- a/src/services/globalRecipeService.ts
++++ b/src/services/globalRecipeService.ts
+@@ -1,5 +1,6 @@
+ import { GlobalRecipe, Recipe } from '../types';
+ import { getVerifiedFoodImage } from '../utils/foodImageHelper';
++import { apiUrl } from '../config';
+ 
+ /**
+  * Curated Authentic Global Recipes Database
+@@ -891,7 +892,7 @@ export async function searchGlobalRecipes(
+   let backendGlobalRecipe: GlobalRecipe | null = null;
+   if (trimmed.length >= 2) {
+     try {
+-      const aiRes = await fetch('/api/recipes/global-search', {
++      const aiRes = await fetch(apiUrl('/api/recipes/global-search'), {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ query: trimmed, cuisine: cuisineFilter !== 'All' ? cuisineFilter : '' }),
+@@ -1008,7 +1009,7 @@ export async function researchDishGlobally(dishName: string): Promise<GlobalReci
+ 
+   // 4. Query Backend Global Recipe Research
+   try {
+-    const aiRes = await fetch('/api/recipes/global-search', {
++    const aiRes = await fetch(apiUrl('/api/recipes/global-search'), {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({ query: clean }),
+diff --git a/src/services/restaurantService.ts b/src/services/restaurantService.ts
+index 2c53a95..df7aa12 100644
+--- a/src/services/restaurantService.ts
++++ b/src/services/restaurantService.ts
+@@ -1,4 +1,5 @@
+ import { getVerifiedFoodImage } from '../utils/foodImageHelper';
++import { apiUrl } from '../config';
+ 
+ export interface RestaurantDish {
+   name: string;
+@@ -496,7 +497,7 @@ export async function detectUserLocation(): Promise<UserLocation> {
+ 
+       // Reverse geocode coordinates via backend endpoint
+       try {
+-        const geoRes = await fetch(`/api/geocode?lat=${lat}&lng=${lng}`, {
++        const geoRes = await fetch(apiUrl(`/api/geocode?lat=${lat}&lng=${lng}`), {
+           signal: AbortSignal.timeout(3500)
+         });
+         if (geoRes.ok) {
+@@ -564,7 +565,7 @@ export async function geocodeCityOrAddress(query: string): Promise<UserLocation
+   if (!clean) return null;
+ 
+   try {
+-    const res = await fetch(`/api/geocode?q=${encodeURIComponent(clean)}`, {
++    const res = await fetch(apiUrl(`/api/geocode?q=${encodeURIComponent(clean)}`), {
+       signal: AbortSignal.timeout(4000)
+     });
+ 
+@@ -885,7 +886,7 @@ export async function searchNearbyRestaurants(
+   // 2. Fetch AI live places with Google Search Grounding for this specific city/location
+   let liveAiPlaces: Restaurant[] = [];
+   try {
+-    const aiPlacesRes = await fetch('/api/places/nearby', {
++    const aiPlacesRes = await fetch(apiUrl('/api/places/nearby'), {
+       method: 'POST',
+       headers: { 'Content-Type': 'application/json' },
+       body: JSON.stringify({
+diff --git a/vite.config.ts b/vite.config.ts
+index fc23e76..978fad6 100644
+--- a/vite.config.ts
++++ b/vite.config.ts
+@@ -17,6 +17,14 @@ export default defineConfig(() => {
+       hmr: process.env.DISABLE_HMR !== 'true',
+       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+       watch: process.env.DISABLE_HMR === 'true' ? null : {},
++      // Proxy /api to the local Django dev server (`python manage.py runserver`)
++      // so relative fetch('/api/...') calls work in dev without VITE_API_BASE_URL.
++      proxy: {
++        '/api': {
++          target: 'http://127.0.0.1:8000',
++          changeOrigin: true,
++        },
++      },
+     },
+   };
+ });

@@ -1,5 +1,5 @@
-{% load static %}
 {% extends "main/base.html" %}
+{% load static %}
 
 {% block title %}Cooking {{ recipe_name }} — Interactive Cooking Assistant{% endblock %}
 
@@ -46,12 +46,20 @@
             </span>
             <span class="px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 text-stone-300 flex items-center gap-1.5">
                 <i class="fa-solid fa-list-check text-amber-400"></i>
-                <span>{{ steps|length }} Step Instructions</span>
+                <span id="step-count-badge">{{ steps|length }} Step Instructions</span>
             </span>
             <span class="px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 text-stone-300 flex items-center gap-1.5">
                 <i class="fa-solid fa-utensils text-amber-400"></i>
                 <span>Serves 4</span>
             </span>
+        </div>
+
+        <!-- NLP Variations -->
+        <div class="flex items-center gap-2 pt-3 border-t border-stone-800/80">
+            <span class="text-xs text-stone-400 font-bold uppercase tracking-wider flex items-center gap-1.5"><i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i> AI Variations:</span>
+            <button onclick="generateVariation('healthier')" class="px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 hover:border-amber-500/50 text-stone-300 text-[10px] font-bold transition-all" id="var-healthier">Healthier</button>
+            <button onclick="generateVariation('spicy')" class="px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 hover:border-amber-500/50 text-stone-300 text-[10px] font-bold transition-all" id="var-spicy">Spicy</button>
+            <button onclick="generateVariation('vegan')" class="px-3 py-1.5 rounded-xl bg-stone-950 border border-stone-800 hover:border-amber-500/50 text-stone-300 text-[10px] font-bold transition-all" id="var-vegan">Vegan</button>
         </div>
     </div>
 
@@ -204,6 +212,7 @@ function updateStepUI() {
     if (rawSteps.length === 0) return;
     document.getElementById('step-text').textContent = rawSteps[currentStepIdx];
     document.getElementById('step-counter').textContent = `Step ${currentStepIdx + 1} of ${rawSteps.length}`;
+    document.getElementById('step-count-badge').textContent = `${rawSteps.length} Step Instructions`;
     
     const progressPercent = Math.round(((currentStepIdx + 1) / rawSteps.length) * 100);
     document.getElementById('step-progress-bar').style.width = `${progressPercent}%`;
@@ -234,6 +243,43 @@ function prevStep() {
     if (currentStepIdx > 0) {
         currentStepIdx--;
         updateStepUI();
+    }
+}
+
+async function generateVariation(type) {
+    const buttons = ['healthier', 'spicy', 'vegan'];
+    buttons.forEach(b => document.getElementById('var-'+b).classList.add('opacity-50', 'pointer-events-none'));
+    const btn = document.getElementById('var-'+type);
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+
+    try {
+        const response = await fetch('/api/ai/generate-variation', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                dish_name: '{{ recipe_name|escapejs }}',
+                ingredients: '{{ recipe.ingredients|escapejs }}',
+                variation_type: type
+            })
+        });
+        const data = await response.json();
+        if (data.status === 'success') {
+            document.getElementById('ingredients-container').innerHTML = `<p class="text-stone-300 leading-relaxed">${data.variation.ingredients.join(', ')}</p>`;
+            rawSteps.length = 0;
+            data.variation.directions.forEach(s => rawSteps.push(s));
+            currentStepIdx = 0;
+            updateStepUI();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    } catch (e) {
+        alert('Failed to generate variation.');
+    } finally {
+        buttons.forEach(b => {
+            const el = document.getElementById('var-'+b);
+            el.classList.remove('opacity-50', 'pointer-events-none');
+            el.innerHTML = b.charAt(0).toUpperCase() + b.slice(1);
+        });
     }
 }
 

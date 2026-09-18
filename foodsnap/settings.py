@@ -56,7 +56,7 @@ ROOT_URLCONF = "foodsnap.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [BASE_DIR / "main" / "templates", BASE_DIR / "dist"],
+        "DIRS": [BASE_DIR / "main" / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -95,7 +95,6 @@ STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [
     BASE_DIR / "public",
-    BASE_DIR / "dist",
     BASE_DIR / "dataset",
 ]
 STORAGES = {

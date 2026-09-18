@@ -13,7 +13,7 @@ from PIL import Image
 
 from .forms import ImageUploadForm, LoginForm, RegisterForm
 from .ml_utils import get_recipes_data, match_image
-from .models import FavoriteRecipe, UploadRecord
+from .models import FavoriteRecipe, Prediction
 
 # Caps how many file bytes are accepted (e.g. 10 MB).
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -32,7 +32,7 @@ def _build_recipe_card(recipe_name: str, confidence: float) -> list | None:
         round(confidence * 100, 1),
         recipe.get("calories", ""),
         recipe.get("cooking_time", ""),
-        recipe.get("ingredients", ""),
+        [i.strip() for i in recipe.get("ingredients", "").split(",") if i.strip()],
         recipe.get("directions", ""),
     ]
 
@@ -70,7 +70,7 @@ def home_page(request):
                             recipe_list_to_return.append(card)
 
                     uploaded_file.seek(0)
-                    UploadRecord.objects.create(
+                    Prediction.objects.create(
                         user=request.user if request.user.is_authenticated else None,
                         image=uploaded_file,
                         top_match=recipe_list_to_return[0][0] if recipe_list_to_return else "",
@@ -151,17 +151,22 @@ def logout_view(request):
 
 @login_required
 def dashboard_view(request):
+    import psutil
+    cpu_usage = psutil.cpu_percent(interval=None)
+    ram = psutil.virtual_memory()
+    ram_usage = ram.percent
+
     if request.user.is_staff:
-        recent_uploads = UploadRecord.objects.all()[:50]
-        total = UploadRecord.objects.count()
+        recent_uploads = Prediction.objects.all()[:50]
+        total = Prediction.objects.count()
         avg = (
             sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
             if recent_uploads
             else 0
         )
     else:
-        recent_uploads = UploadRecord.objects.filter(user=request.user)[:50]
-        total = UploadRecord.objects.filter(user=request.user).count()
+        recent_uploads = Prediction.objects.filter(user=request.user)[:50]
+        total = Prediction.objects.filter(user=request.user).count()
         avg = (
             sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
             if recent_uploads
@@ -175,6 +180,8 @@ def dashboard_view(request):
             "recent_uploads": recent_uploads,
             "avg_inference_ms": round(avg, 2),
             "total_uploads": total,
+            "cpu_usage": cpu_usage,
+            "ram_usage": ram_usage,
         },
     )
 
@@ -363,105 +370,25 @@ def cooking_assistant_view(request, recipe_name: str):
     )
 
 
+def _get_authentic_dataset():
+    import json
+    import os
+    from django.conf import settings
+    path = os.path.join(settings.BASE_DIR, "main", "static", "main", "authentic_dataset.json")
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
 def ai_verifier_view(request):
     """Authentic Dish Image Analysis & Visual Hallmark Verification."""
     return render(
         request,
         "main/ai_verifier.html",
-        {"dataset": AUTHENTIC_DATASET_DICT}
+        {"dataset": _get_authentic_dataset()}
     )
-
-
-AUTHENTIC_DATASET_DICT = {
-    "amala": {
-        "name": "Amala",
-        "originalDatasetUrl": "/dataset/images/amala.jpg",
-        "verifiedWebUrl": "/dataset/images/amala.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Velvety dark brown yam flour swallow (Amala isu)", "Served with Ewedu and Gbegiri soup", "Silky dark consistency"],
-        "culinaryNotes": "Traditional Yoruba swallow made from dried yam flour (elubo), whipped in hot water to dark velvet consistency."
-    },
-    "jollof-rice": {
-        "name": "Jollof Rice",
-        "originalDatasetUrl": "/dataset/images/jollof-rice.jpg",
-        "verifiedWebUrl": "/dataset/images/jollof-rice.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Glossy smoky orange-red long grain rice", "Roasted red bell pepper reduction", "Party-style bottom-pot caramelization"],
-        "culinaryNotes": "Distinct grains coated in reduced tomato-tatashe paste with thyme and bay aromatics."
-    },
-    "egusi-soup": {
-        "name": "Egusi Soup",
-        "originalDatasetUrl": "/dataset/images/egusi-soup.jpg",
-        "verifiedWebUrl": "/dataset/images/egusi-soup.jpg",
-        "authenticityScore": 98,
-        "visualHallmarks": ["Golden melon seed curds/lumps", "Rich red palm oil separation", "Braised assorted meats and ugu greens"],
-        "culinaryNotes": "Textured melon seed protein cakes simmered in palm oil with stockfish and leafy greens."
-    },
-    "suya": {
-        "name": "Suya",
-        "originalDatasetUrl": "/dataset/images/suya.jpg",
-        "verifiedWebUrl": "/dataset/images/suya.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Thinly sliced skewered beef with char marks", "Yaji kuli-kuli peanut spice dusting", "Sliced red onions and fresh tomatoes"],
-        "culinaryNotes": "Open-flame charcoal grilled beef dusted with authentic Northern Nigerian yaji pepper."
-    },
-    "efo-riro": {
-        "name": "Efo Riro",
-        "originalDatasetUrl": "/dataset/images/efo-riro.jpg",
-        "verifiedWebUrl": "/dataset/images/efo-riro.jpg",
-        "authenticityScore": 97,
-        "visualHallmarks": ["Rich emerald green shredded spinach/shoko", "Aromatic palm oil pepper base", "Smoked catfish and tender tripe"],
-        "culinaryNotes": "Yoruba vegetable stew prepared by tossing greens into seasoned fried pepper reduction."
-    },
-    "moin-moin": {
-        "name": "Moin Moin",
-        "originalDatasetUrl": "/dataset/images/moi-moi.jpg",
-        "verifiedWebUrl": "/dataset/images/moi-moi.jpg",
-        "authenticityScore": 98,
-        "visualHallmarks": ["Steamed golden-orange bean pudding loaf", "Smooth silky texture", "Hard-boiled egg or fish slice inclusion"],
-        "culinaryNotes": "Pureed peeled black-eyed peas steamed in banana leaves or ramekins with peppers and crayfish."
-    },
-    "chin-chin": {
-        "name": "Chin Chin",
-        "originalDatasetUrl": "/dataset/images/chin-chin.jpg",
-        "verifiedWebUrl": "/dataset/images/chin-chin.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Crispy golden-brown cube pastries", "Nutmeg-infused sugar glaze", "Uniform snack-sized crunch"],
-        "culinaryNotes": "Deep-fried West African pastry cubes seasoned with grated nutmeg and butter."
-    },
-    "pounded-yam": {
-        "name": "Pounded Yam",
-        "originalDatasetUrl": "/dataset/images/pounded-yam.jpg",
-        "verifiedWebUrl": "/dataset/images/pounded-yam.jpg",
-        "authenticityScore": 99,
-        "visualHallmarks": ["Silky alabaster white swallow mound", "Pliable elastic texture", "Molded sphere serving presentation"],
-        "culinaryNotes": "Steamed African white yam pounded in a mortar until starchy, stretchy, and pillowy."
-    },
-    "spaghetti-bolognese": {
-        "name": "Spaghetti Bolognese",
-        "originalDatasetUrl": "/dataset/images/spaghetti-bolognese.jpg",
-        "verifiedWebUrl": "/dataset/images/spaghetti-bolognese.jpg",
-        "authenticityScore": 98,
-        "visualHallmarks": ["Al dente pasta strands", "Rich slow-cooked minced beef ragu", "Parmigiano-Reggiano dusting"],
-        "culinaryNotes": "Classic Italian ragù alla bolognese clinging to long pasta with fresh basil accents."
-    },
-    "grilled-chicken": {
-        "name": "Grilled Chicken",
-        "originalDatasetUrl": "/dataset/images/grilled-chicken.jpg",
-        "verifiedWebUrl": "/dataset/images/grilled-chicken.jpg",
-        "authenticityScore": 97,
-        "visualHallmarks": ["Golden-brown charred skin", "Herb and paprika spice rub", "Juicy bone-in roast presentation"],
-        "culinaryNotes": "Flame-roasted seasoned poultry with caramelized exterior and tender interior."
-    },
-    "vegetable-salad": {
-        "name": "Vegetable Salad",
-        "originalDatasetUrl": "/dataset/images/vegetable-salad.jpg",
-        "verifiedWebUrl": "/dataset/images/vegetable-salad.jpg",
-        "authenticityScore": 96,
-        "visualHallmarks": ["Crisp romaine and iceberg leaves", "Sliced English cucumbers and ruby cherry tomatoes", "Golden boiled egg wedges and sweetcorn"],
-        "culinaryNotes": "Vibrant chilled fresh produce composed on a platter with light vinaigrette."
-    }
-}
 
 
 def api_geocode(request):
@@ -630,7 +557,7 @@ def api_dataset_images(request):
     from django.http import JsonResponse
     return JsonResponse({
         "success": True,
-        "images": AUTHENTIC_DATASET_DICT
+        "images": _get_authentic_dataset()
     })
 
 
@@ -649,7 +576,7 @@ def api_verify_image(request):
     current_image_url = data.get("currentImageUrl", "")
     recipe_id = data.get("recipeId", "").lower() or dish_name.lower().replace(" ", "-")
 
-    known_data = AUTHENTIC_DATASET_DICT.get(recipe_id, {})
+    known_data = _get_authentic_dataset().get(recipe_id, {})
 
     result = {
         "dishName": dish_name,
@@ -685,7 +612,7 @@ def api_search_food_image(request):
 
     query = data.get("query", "")
     normalized_key = query.lower().replace(" ", "-")
-    known_data = AUTHENTIC_DATASET_DICT.get(normalized_key, {})
+    known_data = _get_authentic_dataset().get(normalized_key, {})
 
     return JsonResponse({
         "query": query,
@@ -768,7 +695,8 @@ def api_global_recipe_search(request):
     normalized_id = query.lower().replace(" ", "-")
 
     # Check if exists in dataset
-    known = AUTHENTIC_DATASET_DICT.get(normalized_id)
+    dataset = _get_authentic_dataset()
+    known = dataset.get(normalized_id)
     img_url = known["originalDatasetUrl"] if known else "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1200&q=80"
 
     # Fetch Wikipedia description & photo if available
@@ -790,52 +718,99 @@ def api_global_recipe_search(request):
     except Exception:
         pass
 
-    recipe = {
-        "id": f"recipe-{normalized_id}",
-        "name": f"Authentic {clean_name}",
-        "cuisine": cuisine or "Global Culinary Heritage",
-        "category": "Traditional Specialty",
-        "origin": "Regional Culinary Heritage",
-        "prepTime": "20 mins",
-        "cookTime": "30 mins",
-        "totalTime": "50 mins",
-        "servings": "4 servings",
-        "difficulty": "Medium",
-        "calories": "450 kcal / serving",
-        "imageUrl": img_url,
-        "description": wiki_desc or f"An authentic preparation of {clean_name} prepared according to traditional culinary standards and authentic regional techniques.",
-        "flavorProfile": ["Savory", "Aromatic", "Authentic", "Rich"],
-        "dietaryTags": ["Authentic Recipe", "Fresh Ingredients", "Heritage"],
-        "ingredientsList": [
-            {"item": f"{clean_name} Core Protein or Main Base", "amount": "500g (1.1 lbs)", "notes": "Prepared fresh"},
-            {"item": "Aromatic Base (Onions, Garlic, Ginger)", "amount": "1 cup", "notes": "Finely minced"},
-            {"item": "Regional Seasonings & Spices", "amount": "2 tbsp", "notes": "Authentic heritage blend"},
-            {"item": "Cooking Oil / Rich Broth", "amount": "1/2 cup", "notes": "For sautéing and simmering"},
-            {"item": "Fresh Herbs & Garnish", "amount": "1/4 cup", "notes": "Chopped for finishing"}
-        ],
-        "directions": [
-            f"Prepare and measure all fresh ingredients for authentic {clean_name}.",
-            "Heat cooking oil over medium flame and sauté the aromatic base until fragrant and golden.",
-            "Add the main ingredients and sear over medium-high heat to develop deep flavor compounds.",
-            "Pour in the broth or reduction, reduce heat to low, and simmer until tender and thoroughly infused.",
-            "Adjust seasonings to taste, garnish with fresh herbs, and serve hot."
-        ],
-        "chefTips": [
-            f"Use authentic regional seasonings to preserve the signature flavor profile of {clean_name}.",
-            "Allow the dish to rest for 3-5 minutes before serving so the flavors settle and meld."
-        ],
-        "regionalVariations": [
-            "Traditional Homeland Style: Slow-simmered with classic spices.",
-            "Contemporary Style: Prepared with seasonal fresh produce."
-        ],
-        "nutrition": {
-            "protein": "28g",
-            "carbs": "42g",
-            "fat": "16g",
-            "fiber": "4g"
-        },
-        "source": "FoodSnap Global Culinary Research"
-    }
+    try:
+        from google import genai
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        if api_key:
+            client = genai.Client(api_key=api_key)
+            prompt = f"Generate an authentic recipe for '{clean_name}'. Return a JSON object with 'ingredientsList' (list of objects with 'item' and 'amount'), 'directions' (list of strings), 'prepTime', 'cookTime', 'totalTime', 'calories', 'description', and 'dietaryTags' (list of strings)."
+            
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+            )
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:-3]
+            elif raw_text.startswith("```"):
+                raw_text = raw_text[3:-3]
+                
+            gemini_data = json.loads(raw_text)
+            
+            recipe = {
+                "id": f"recipe-{normalized_id}",
+                "name": f"Authentic {clean_name}",
+                "cuisine": cuisine or "Global Culinary Heritage",
+                "category": "Traditional Specialty",
+                "origin": "Regional Culinary Heritage",
+                "prepTime": gemini_data.get("prepTime", "20 mins"),
+                "cookTime": gemini_data.get("cookTime", "30 mins"),
+                "totalTime": gemini_data.get("totalTime", "50 mins"),
+                "servings": "4 servings",
+                "difficulty": "Medium",
+                "calories": gemini_data.get("calories", "450 kcal / serving"),
+                "imageUrl": img_url,
+                "description": gemini_data.get("description", wiki_desc),
+                "flavorProfile": ["Savory", "Aromatic", "Authentic", "Rich"],
+                "dietaryTags": gemini_data.get("dietaryTags", ["Authentic Recipe", "Fresh Ingredients", "Heritage"]),
+                "ingredientsList": gemini_data.get("ingredientsList", []),
+                "directions": gemini_data.get("directions", []),
+                "chefTips": [
+                    f"Use authentic regional seasonings to preserve the signature flavor profile of {clean_name}.",
+                    "Allow the dish to rest for 3-5 minutes before serving so the flavors settle and meld."
+                ],
+                "regionalVariations": [
+                    "Traditional Homeland Style: Slow-simmered with classic spices."
+                ],
+                "nutrition": {
+                    "protein": "28g",
+                    "carbs": "42g",
+                    "fat": "16g",
+                    "fiber": "4g"
+                },
+                "source": "FoodSnap Global Culinary Research (Powered by Gemini)"
+            }
+        else:
+            raise Exception("No API key")
+    except Exception:
+        recipe = {
+            "id": f"recipe-{normalized_id}",
+            "name": f"Authentic {clean_name}",
+            "cuisine": cuisine or "Global Culinary Heritage",
+            "category": "Traditional Specialty",
+            "origin": "Regional Culinary Heritage",
+            "prepTime": "20 mins",
+            "cookTime": "30 mins",
+            "totalTime": "50 mins",
+            "servings": "4 servings",
+            "difficulty": "Medium",
+            "calories": "450 kcal / serving",
+            "imageUrl": img_url,
+            "description": wiki_desc or f"An authentic preparation of {clean_name} prepared according to traditional culinary standards.",
+            "flavorProfile": ["Savory", "Aromatic", "Authentic", "Rich"],
+            "dietaryTags": ["Authentic Recipe", "Fresh Ingredients", "Heritage"],
+            "ingredientsList": [
+                {"item": f"{clean_name} Core Protein or Main Base", "amount": "500g (1.1 lbs)"},
+                {"item": "Aromatic Base (Onions, Garlic, Ginger)", "amount": "1 cup"}
+            ],
+            "directions": [
+                f"Prepare and measure all fresh ingredients for authentic {clean_name}.",
+                "Heat cooking oil over medium flame and sauté the aromatic base until fragrant and golden."
+            ],
+            "chefTips": [
+                f"Use authentic regional seasonings to preserve the signature flavor profile of {clean_name}."
+            ],
+            "regionalVariations": [
+                "Traditional Homeland Style: Slow-simmered with classic spices."
+            ],
+            "nutrition": {
+                "protein": "28g",
+                "carbs": "42g",
+                "fat": "16g",
+                "fiber": "4g"
+            },
+            "source": "FoodSnap Global Culinary Research"
+        }
 
     return JsonResponse({
         "success": True,
@@ -844,6 +819,62 @@ def api_global_recipe_search(request):
         "timestamp": int(time.time() * 1000)
     })
 
+def api_retrain_model(request):
+    """Admin endpoint to retrain the DenseNet201 spatial feature vectors."""
+    import subprocess
+    import os
+    from django.http import JsonResponse
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    
+    if not request.user.is_staff:
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+        
+    try:
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        script_path = os.path.join(base_dir, 'scripts', 'encode_dataset.py')
+        # We start it asynchronously so we don't block the request.
+        subprocess.Popen(["python", script_path], cwd=base_dir)
+        return JsonResponse({"status": "success", "message": "Retraining started"})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+def api_generate_recipe_variation(request):
+    """Generate recipe variations using Gemini API."""
+    import json
+    import os
+    from django.http import JsonResponse
+    from django.views.decorators.csrf import csrf_exempt
 
-
-
+    if request.method != "POST":
+        return JsonResponse({"error": "POST required"}, status=405)
+    
+    try:
+        data = json.loads(request.body.decode("utf-8"))
+        dish_name = data.get("dish_name", "")
+        ingredients = data.get("ingredients", "")
+        variation_type = data.get("variation_type", "healthier")
+        
+        api_key = os.environ.get("GEMINI_API_KEY", "")
+        if not api_key:
+            return JsonResponse({"error": "No API key configured"}, status=500)
+            
+        from google import genai
+        client = genai.Client(api_key=api_key)
+        
+        prompt = f"Take the dish '{dish_name}' with ingredients '{ingredients}'. Generate a {variation_type} version. Return a JSON object with 'ingredients' (list of strings) and 'directions' (list of strings)."
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents=prompt,
+        )
+        
+        raw_text = response.text.strip()
+        if raw_text.startswith("```json"):
+            raw_text = raw_text[7:-3]
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:-3]
+            
+        variation_data = json.loads(raw_text)
+        return JsonResponse({"status": "success", "variation": variation_data})
+        
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)

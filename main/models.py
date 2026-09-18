@@ -2,15 +2,26 @@ from django.conf import settings
 from django.db import models
 
 
-class UploadRecord(models.Model):
-    """Keeps a log of uploads. Linked to the user when they are logged in."""
+class Recipe(models.Model):
+    name = models.CharField(max_length=255, unique=True)
+    calories = models.CharField(max_length=100)
+    cooking_time = models.CharField(max_length=100)
+    ingredients = models.TextField()
+    directions = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+
+class Prediction(models.Model):
+    """Keeps a log of uploads and their predicted matches. Linked to the user when they are logged in."""
 
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
         blank=True,
         on_delete=models.SET_NULL,
-        related_name="upload_records",
+        related_name="predictions",
     )
     image = models.ImageField(upload_to="uploads/")
     top_match = models.CharField(max_length=255, blank=True)

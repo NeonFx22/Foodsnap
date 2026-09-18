@@ -79,7 +79,7 @@
                 </a>
 
                 <!-- Desktop Navigation Bar (All Tabs) -->
-                <nav class="hidden lg:flex items-center gap-1 bg-stone-950/60 p-1 rounded-2xl border border-stone-800/80" aria-label="Main Navigation">
+                <nav class="hidden xl:flex items-center gap-1 bg-stone-950/60 p-1 rounded-2xl border border-stone-800/80" aria-label="Main Navigation">
                     <a href="{% url 'home' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'home' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
                         <i class="fa-solid fa-camera {% if request.resolver_match.url_name == 'home' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
                         <span>Dish Recognition</span>
@@ -88,21 +88,21 @@
                         <i class="fa-solid fa-globe {% if request.resolver_match.url_name == 'recipes' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
                         <span>Global Search</span>
                         <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'recipes' %}bg-stone-950 text-amber-300{% else %}bg-stone-800 text-stone-300 border border-stone-700{% endif %}">
-                            Live
+                            &nbsp;Live
                         </span>
                     </a>
                     <a href="{% url 'nearby' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'nearby' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
                         <i class="fa-solid fa-location-dot {% if request.resolver_match.url_name == 'nearby' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
                         <span>Nearby Dining</span>
                         <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'nearby' %}bg-stone-950 text-amber-300{% else %}bg-stone-800 text-stone-300 border border-stone-700{% endif %}">
-                            Radar
+                            &nbsp;Radar
                         </span>
                     </a>
                     <a href="{% url 'ai_verifier' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'ai_verifier' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
                         <i class="fa-solid fa-layer-group {% if request.resolver_match.url_name == 'ai_verifier' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
                         <span>Feature Vectors</span>
                         <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'ai_verifier' %}bg-stone-950 text-amber-300{% else %}bg-stone-800 text-stone-300 border border-stone-700{% endif %}">
-                            80-D
+                            &nbsp;80-D
                         </span>
                     </a>
                     <a href="{% url 'favorites' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'favorites' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
@@ -117,6 +117,7 @@
 
                 <!-- Right Actions: Help Guide + User Auth / Mobile Toggle -->
                 <div class="flex items-center gap-2.5">
+                    <span class="sr-only">&nbsp;</span>
                     <button onclick="openGuideModal()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-xs font-medium border border-stone-700 transition-colors" title="How FoodSnap Works">
                         <i class="fa-solid fa-circle-question text-amber-400"></i>
                         <span>Guide</span>
@@ -142,7 +143,7 @@
                     <button
                         onclick="toggleMobileMenu()"
                         id="mobile-hamburger-btn"
-                        class="lg:hidden p-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700 transition-colors flex items-center justify-center min-h-[42px] min-w-[42px]"
+                        class="xl:hidden p-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white border border-stone-700 transition-colors flex items-center justify-center min-h-[42px] min-w-[42px]"
                         aria-label="Toggle Navigation Menu"
                     >
                         <i class="fa-solid fa-bars text-base" id="hamburger-icon"></i>
@@ -151,7 +152,7 @@
             </div>
 
             <!-- Horizontal Quick-Scroll Bar on Mobile -->
-            <div class="flex lg:hidden overflow-x-auto py-2.5 gap-2 border-t border-stone-800/80 scrollbar-none items-center">
+            <div class="flex xl:hidden overflow-x-auto py-2.5 gap-2 border-t border-stone-800/80 scrollbar-none items-center">
                 <a href="{% url 'home' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all min-h-[36px] {% if request.resolver_match.url_name == 'home' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}bg-stone-800/90 text-stone-300 hover:bg-stone-800 border border-stone-700/60{% endif %}">
                     <i class="fa-solid fa-camera text-xs"></i>
                     <span>Scan Dish</span>
@@ -159,17 +160,17 @@
                 <a href="{% url 'recipes' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all min-h-[36px] {% if request.resolver_match.url_name == 'recipes' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}bg-stone-800/90 text-stone-300 hover:bg-stone-800 border border-stone-700/60{% endif %}">
                     <i class="fa-solid fa-globe text-xs"></i>
                     <span>Global Search</span>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'recipes' %}bg-stone-950 text-amber-300{% else %}bg-stone-900 text-stone-400{% endif %}">Live</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'recipes' %}bg-stone-950 text-amber-300{% else %}bg-stone-900 text-stone-400{% endif %}">&nbsp;Live</span>
                 </a>
                 <a href="{% url 'nearby' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all min-h-[36px] {% if request.resolver_match.url_name == 'nearby' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}bg-stone-800/90 text-stone-300 hover:bg-stone-800 border border-stone-700/60{% endif %}">
                     <i class="fa-solid fa-location-dot text-xs"></i>
                     <span>Nearby</span>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'nearby' %}bg-stone-950 text-amber-300{% else %}bg-stone-900 text-stone-400{% endif %}">Radar</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'nearby' %}bg-stone-950 text-amber-300{% else %}bg-stone-900 text-stone-400{% endif %}">&nbsp;Radar</span>
                 </a>
                 <a href="{% url 'ai_verifier' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all min-h-[36px] {% if request.resolver_match.url_name == 'ai_verifier' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}bg-stone-800/90 text-stone-300 hover:bg-stone-800 border border-stone-700/60{% endif %}">
                     <i class="fa-solid fa-layer-group text-xs"></i>
                     <span>Vectors</span>
-                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'ai_verifier' %}bg-stone-950 text-amber-300{% else %}bg-stone-900 text-stone-400{% endif %}">80-D</span>
+                    <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'ai_verifier' %}bg-stone-950 text-amber-300{% else %}bg-stone-900 text-stone-400{% endif %}">&nbsp;80-D</span>
                 </a>
                 <a href="{% url 'favorites' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold whitespace-nowrap flex-shrink-0 transition-all min-h-[36px] {% if request.resolver_match.url_name == 'favorites' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}bg-stone-800/90 text-stone-300 hover:bg-stone-800 border border-stone-700/60{% endif %}">
                     <i class="fa-solid fa-bookmark text-xs"></i>

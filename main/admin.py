@@ -1,10 +1,16 @@
 from django.contrib import admin
 
-from .models import FavoriteRecipe, UploadRecord
+from .models import FavoriteRecipe, Prediction, Recipe
 
 
-@admin.register(UploadRecord)
-class UploadRecordAdmin(admin.ModelAdmin):
+@admin.register(Recipe)
+class RecipeAdmin(admin.ModelAdmin):
+    list_display = ("name", "calories", "cooking_time")
+    search_fields = ("name",)
+
+
+@admin.register(Prediction)
+class PredictionAdmin(admin.ModelAdmin):
     list_display = ("top_match", "user", "confidence", "created_at")
     list_filter = ("created_at",)
     search_fields = ("top_match",)

@@ -1,5 +1,5 @@
-{% load static %}
 {% extends "main/base.html" %}
+{% load static %}
 
 {% block title %}FoodSnap — Camera Scanner &amp; Food Recognition{% endblock %}
 
@@ -162,10 +162,16 @@
                         </span>
                     </div>
 
-                    <!-- Ingredients preview -->
+                    <!-- AI Detected Ingredients preview -->
                     <div class="space-y-1.5">
-                        <h4 class="text-xs font-bold text-stone-300 uppercase tracking-wider">Required Ingredients:</h4>
-                        <p class="text-xs text-stone-400 line-clamp-2 leading-relaxed">{{ x.4 }}</p>
+                        <h4 class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-microchip"></i> AI Detected Ingredients
+                        </h4>
+                        <div class="flex flex-wrap gap-1.5 pt-1">
+                            {% for ingredient in x.4 %}
+                                <span class="px-2 py-0.5 rounded-md bg-stone-800 text-stone-300 text-[10px] border border-stone-700">{{ ingredient }}</span>
+                            {% endfor %}
+                        </div>
                     </div>
 
                     <!-- Action Buttons -->

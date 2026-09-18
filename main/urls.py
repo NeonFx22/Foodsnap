@@ -25,6 +25,8 @@ urlpatterns = [
     path("api/dataset-images", views.api_dataset_images, name="api_dataset_images"),
     path("api/analyze-food", views.api_analyze_food, name="api_analyze_food"),
     path("api/recipes/global-search", views.api_global_recipe_search, name="api_global_recipe_search"),
+    path("api/ai/generate-variation", views.api_generate_recipe_variation, name="api_generate_recipe_variation"),
+    path("api/retrain", views.api_retrain_model, name="api_retrain_model"),
 ]
 
 

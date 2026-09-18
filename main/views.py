@@ -129,6 +129,12 @@ def login_view(request):
             )
             if user is not None:
                 login(request, user)
+                
+                if request.POST.get("remember_me"):
+                    request.session.set_expiry(1209600)  # 2 weeks
+                else:
+                    request.session.set_expiry(0)  # expires on browser close
+                    
                 next_url = request.POST.get("next") or request.GET.get("next")
                 if next_url and url_has_allowed_host_and_scheme(
                     next_url, allowed_hosts={request.get_host()}
@@ -152,26 +158,48 @@ def logout_view(request):
 @login_required
 def dashboard_view(request):
     import psutil
+    from django.utils import timezone
+    from datetime import timedelta
+    from django.db.models import Count
+    from django.db.models.functions import TruncDate
+
     cpu_usage = psutil.cpu_percent(interval=None)
     ram = psutil.virtual_memory()
     ram_usage = ram.percent
 
+    now = timezone.now()
+    seven_days_ago = now - timedelta(days=6)
+
     if request.user.is_staff:
-        recent_uploads = Prediction.objects.all()[:50]
-        total = Prediction.objects.count()
-        avg = (
-            sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
-            if recent_uploads
-            else 0
-        )
+        base_qs = Prediction.objects.all()
     else:
-        recent_uploads = Prediction.objects.filter(user=request.user)[:50]
-        total = Prediction.objects.filter(user=request.user).count()
-        avg = (
-            sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
-            if recent_uploads
-            else 0
-        )
+        base_qs = Prediction.objects.filter(user=request.request.user if hasattr(request, 'request') else request.user) # fallback just in case
+        base_qs = Prediction.objects.filter(user=request.user)
+
+    recent_uploads = base_qs.order_by('-created_at')[:50]
+    total = base_qs.count()
+    avg = (
+        sum(u.inference_ms for u in recent_uploads) / len(recent_uploads)
+        if recent_uploads
+        else 0
+    )
+
+    # Group by date for the chart (last 7 days)
+    scans_by_date = (
+        base_qs.filter(created_at__gte=seven_days_ago.replace(hour=0, minute=0, second=0))
+        .annotate(date=TruncDate('created_at'))
+        .values('date')
+        .annotate(count=Count('id'))
+        .order_by('date')
+    )
+    scan_dict = {item['date']: item['count'] for item in scans_by_date if item['date']}
+
+    chart_labels = []
+    chart_data = []
+    for i in range(7):
+        day = (seven_days_ago + timedelta(days=i)).date()
+        chart_labels.append(day.strftime("%b %d"))
+        chart_data.append(scan_dict.get(day, 0))
 
     return render(
         request,
@@ -182,6 +210,8 @@ def dashboard_view(request):
             "total_uploads": total,
             "cpu_usage": cpu_usage,
             "ram_usage": ram_usage,
+            "chart_labels": chart_labels,
+            "chart_data": chart_data,
         },
     )
 

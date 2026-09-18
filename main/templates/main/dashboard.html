@@ -145,28 +145,77 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     const ctx = document.getElementById('uploadsChart').getContext('2d');
+    
+    // Create a smooth gradient background for the chart (SegmentBackground simulation)
+    const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+    gradient.addColorStop(0, 'rgba(251, 191, 36, 0.15)'); // amber-500
+    gradient.addColorStop(1, 'rgba(251, 191, 36, 0.0)');
+
+    const chartLabels = {{ chart_labels|safe }};
+    const chartData = {{ chart_data|safe }};
+
     new Chart(ctx, {
         type: 'line',
         data: {
-            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+            labels: chartLabels,
             datasets: [{
                 label: 'Scans',
-                data: [12, 19, 3, 5, 2, {{ total_uploads }}],
+                data: chartData,
                 borderColor: '#fbbf24',
-                backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                backgroundColor: gradient,
+                borderWidth: 2.5,
                 fill: true,
-                tension: 0.4
+                tension: 0.4, // Natural curve
+                pointBackgroundColor: '#1c1917', // stone-900 marker styling
+                pointBorderColor: '#fbbf24',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                // Implement Dashed Tail for the final "in progress" segment
+                segment: {
+                    borderDash: ctx => ctx.p0DataIndex >= 4 ? [6, 4] : undefined
+                }
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false, // Mimics ChartTooltip crosshair snap
+            },
             plugins: {
-                legend: { display: false }
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1c1917', // stone-900
+                    titleColor: '#a8a29e', // stone-400
+                    bodyColor: '#fff',
+                    bodyFont: { weight: 'bold' },
+                    borderColor: '#292524', // stone-800
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return context.parsed.y + ' scans processed';
+                        }
+                    }
+                }
             },
             scales: {
-                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#78716c' } },
-                x: { grid: { display: false }, ticks: { color: '#78716c' } }
+                y: { 
+                    grid: { 
+                        color: 'rgba(255,255,255,0.08)', 
+                        borderDash: [4, 4], // Dashed horizontal grid
+                        drawBorder: false
+                    }, 
+                    ticks: { color: '#78716c', padding: 10 },
+                    beginAtZero: true
+                },
+                x: { 
+                    grid: { display: false }, 
+                    ticks: { color: '#78716c' } 
+                }
             }
         }
     });

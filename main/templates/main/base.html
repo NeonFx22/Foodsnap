@@ -58,7 +58,7 @@
 
     <!-- Global Header / Navigation -->
     <header class="sticky top-0 z-40 bg-stone-900/95 backdrop-blur-md border-b border-stone-800/90 text-stone-100 shadow-lg">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="w-full mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-16">
                 <!-- Brand / Logo -->
                 <a href="{% url 'home' %}" class="flex items-center gap-3 group select-none" id="brand-logo">
@@ -80,64 +80,58 @@
 
                 <!-- Desktop Navigation Bar (All Tabs) -->
                 <nav class="hidden xl:flex items-center gap-1 bg-stone-950/60 p-1 rounded-2xl border border-stone-800/80" aria-label="Main Navigation">
-                    <a href="{% url 'home' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'home' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
-                        <i class="fa-solid fa-camera {% if request.resolver_match.url_name == 'home' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
+                    <a href="{% url 'home' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all {% if request.resolver_match.url_name == 'home' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
+                        <i class="fa-solid fa-camera {% if request.resolver_match.url_name == 'home' %}text-stone-950{% else %}text-stone-400{% endif %} text-sm"></i>
                         <span>Dish Recognition</span>
                     </a>
-                    <a href="{% url 'recipes' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'recipes' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
-                        <i class="fa-solid fa-globe {% if request.resolver_match.url_name == 'recipes' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
+                    <a href="{% url 'recipes' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all {% if request.resolver_match.url_name == 'recipes' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
+                        <i class="fa-solid fa-globe {% if request.resolver_match.url_name == 'recipes' %}text-stone-950{% else %}text-stone-400{% endif %} text-sm"></i>
                         <span>Global Search</span>
-                        <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'recipes' %}bg-stone-950 text-amber-300{% else %}bg-stone-800 text-stone-300 border border-stone-700{% endif %}">
-                            &nbsp;Live
-                        </span>
                     </a>
-                    <a href="{% url 'nearby' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'nearby' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
-                        <i class="fa-solid fa-location-dot {% if request.resolver_match.url_name == 'nearby' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
+                    <a href="{% url 'nearby' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all {% if request.resolver_match.url_name == 'nearby' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
+                        <i class="fa-solid fa-location-dot {% if request.resolver_match.url_name == 'nearby' %}text-stone-950{% else %}text-stone-400{% endif %} text-sm"></i>
                         <span>Nearby Dining</span>
-                        <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'nearby' %}bg-stone-950 text-amber-300{% else %}bg-stone-800 text-stone-300 border border-stone-700{% endif %}">
-                            &nbsp;Radar
-                        </span>
                     </a>
-                    <a href="{% url 'ai_verifier' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'ai_verifier' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
-                        <i class="fa-solid fa-layer-group {% if request.resolver_match.url_name == 'ai_verifier' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
+                    <a href="{% url 'ai_verifier' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all {% if request.resolver_match.url_name == 'ai_verifier' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
+                        <i class="fa-solid fa-layer-group {% if request.resolver_match.url_name == 'ai_verifier' %}text-stone-950{% else %}text-stone-400{% endif %} text-sm"></i>
                         <span>Feature Vectors</span>
-                        <span class="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold {% if request.resolver_match.url_name == 'ai_verifier' %}bg-stone-950 text-amber-300{% else %}bg-stone-800 text-stone-300 border border-stone-700{% endif %}">
-                            &nbsp;80-D
-                        </span>
                     </a>
-                    <a href="{% url 'favorites' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'favorites' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
-                        <i class="fa-solid fa-bookmark {% if request.resolver_match.url_name == 'favorites' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
+                    <a href="{% url 'favorites' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all {% if request.resolver_match.url_name == 'favorites' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
+                        <i class="fa-solid fa-bookmark {% if request.resolver_match.url_name == 'favorites' %}text-stone-950{% else %}text-stone-400{% endif %} text-sm"></i>
                         <span>Saved</span>
                     </a>
-                    <a href="{% url 'dashboard' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all {% if request.resolver_match.url_name == 'dashboard' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
-                        <i class="fa-solid fa-chart-simple {% if request.resolver_match.url_name == 'dashboard' %}text-stone-950{% else %}text-stone-400{% endif %} text-xs"></i>
+                    <a href="{% url 'dashboard' %}" class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-sm font-semibold transition-all {% if request.resolver_match.url_name == 'dashboard' %}bg-amber-500 text-stone-950 font-bold shadow-md shadow-amber-500/20{% else %}text-stone-300 hover:text-white hover:bg-stone-800/70{% endif %}">
+                        <i class="fa-solid fa-chart-simple {% if request.resolver_match.url_name == 'dashboard' %}text-stone-950{% else %}text-stone-400{% endif %} text-sm"></i>
                         <span>Engine</span>
                     </a>
                 </nav>
 
                 <!-- Right Actions: Help Guide + User Auth / Mobile Toggle -->
-                <div class="flex items-center gap-2.5">
+                <div class="flex items-center gap-4">
                     <span class="sr-only">&nbsp;</span>
                     <button onclick="openGuideModal()" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-stone-800 hover:bg-stone-700 text-stone-300 hover:text-white text-xs font-medium border border-stone-700 transition-colors" title="How FoodSnap Works">
                         <i class="fa-solid fa-circle-question text-amber-400"></i>
                         <span>Guide</span>
                     </button>
 
-                    {% if user.is_authenticated %}
-                    <form method="post" action="{% url 'logout' %}" class="inline">
-                        {% csrf_token %}
-                        <button type="submit" class="px-3 py-1.5 rounded-xl bg-stone-900 hover:bg-stone-800 text-stone-400 hover:text-stone-200 text-xs font-semibold border border-stone-800 transition-colors">
-                            Logout
-                        </button>
-                    </form>
-                    {% else %}
-                    <a href="{% url 'login' %}" class="hidden sm:inline-block px-3 py-1.5 rounded-xl text-xs font-semibold text-stone-300 hover:text-white transition-colors">
-                        Login
-                    </a>
-                    <a href="{% url 'register' %}" class="hidden sm:inline-block px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-stone-950 shadow-md shadow-amber-500/20 transition-all">
-                        Sign up
-                    </a>
-                    {% endif %}
+                    <!-- PillNav Style Auth Group -->
+                    <div class="hidden sm:flex items-center rounded-full bg-stone-950 p-1 border border-stone-800 shadow-inner">
+                        {% if user.is_authenticated %}
+                        <form method="post" action="{% url 'logout' %}" class="inline m-0 p-0">
+                            {% csrf_token %}
+                            <button type="submit" class="px-5 py-1.5 rounded-full bg-stone-800 hover:bg-stone-700 text-stone-200 hover:text-white text-sm font-semibold transition-colors shadow-sm border border-stone-700/50">
+                                Logout
+                            </button>
+                        </form>
+                        {% else %}
+                        <a href="{% url 'login' %}" class="px-5 py-1.5 rounded-full text-sm transition-colors {% if request.resolver_match.url_name == 'login' %}bg-amber-500 text-stone-950 font-bold shadow-sm{% else %}text-stone-400 hover:text-stone-200 font-semibold{% endif %}">
+                            Login
+                        </a>
+                        <a href="{% url 'register' %}" class="px-5 py-1.5 rounded-full text-sm transition-all {% if request.resolver_match.url_name == 'login' %}text-stone-400 hover:text-stone-200 font-semibold{% else %}bg-amber-500 text-stone-950 font-bold shadow-sm{% endif %}">
+                            Sign up
+                        </a>
+                        {% endif %}
+                    </div>
 
                     <!-- Mobile Hamburger Menu Button -->
                     <button

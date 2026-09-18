@@ -1,6 +1,8 @@
 import base64
 import string
 import time
+import logging
+from functools import lru_cache
 
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
@@ -14,6 +16,8 @@ from PIL import Image
 from .forms import ImageUploadForm, LoginForm, RegisterForm
 from .ml_utils import get_recipes_data, match_image
 from .models import FavoriteRecipe, Prediction
+
+logger = logging.getLogger(__name__)
 
 # Caps how many file bytes are accepted (e.g. 10 MB).
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -77,7 +81,8 @@ def home_page(request):
                         confidence=recipe_list_to_return[0][1] if recipe_list_to_return else 0.0,
                         inference_ms=inference_ms,
                     )
-                except Exception:  # noqa: BLE001 - keep the page usable on bad images
+                except Exception as e:  # noqa: BLE001 - keep the page usable on bad images
+                    logger.exception("Error processing uploaded image: %s", e)
                     error = "Could not process that image. Please try a different photo."
         else:
             error = "Please choose an image file to upload."
@@ -312,8 +317,8 @@ def nearby_places_view(request):
                     "image": "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=800&q=80",
                     "source": "OpenStreetMap Live Radar",
                 })
-    except Exception:
-        pass
+    except urllib.error.URLError as e:
+        logger.error("OpenStreetMap API Error in nearby_places_view: %s", e)
 
     return render(
         request,
@@ -400,6 +405,7 @@ def cooking_assistant_view(request, recipe_name: str):
     )
 
 
+@lru_cache(maxsize=1)
 def _get_authentic_dataset():
     import json
     import os
@@ -408,7 +414,8 @@ def _get_authentic_dataset():
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except OSError as e:
+        logger.error("Failed to load authentic_dataset.json: %s", e)
         return {}
 
 
@@ -458,8 +465,8 @@ def api_geocode(request):
                         "country": country,
                         "method": "search"
                     })
-        except Exception:
-            pass
+        except urllib.error.URLError as e:
+            logger.error("Geocode Search Error: %s", e)
 
         return JsonResponse({
             "lat": 6.5244,
@@ -495,8 +502,8 @@ def api_geocode(request):
                     "country": country,
                     "method": "gps"
                 })
-        except Exception:
-            pass
+        except urllib.error.URLError as e:
+            logger.error("Geocode Reverse Error: %s", e)
 
         return JsonResponse({
             "lat": float(lat_str),
@@ -570,8 +577,8 @@ def api_nearby_places(request):
                     "specialtyPrice": "₦4,500 / $12",
                     "description": f"Popular food spot serving fresh {query or 'local dishes'} at {full_address}."
                 })
-    except Exception:
-        pass
+    except urllib.error.URLError as e:
+        logger.error("Nearby Places API Error: %s", e)
 
     return JsonResponse({
         "status": "success",
@@ -745,8 +752,8 @@ def api_global_recipe_search(request):
                 img_url = wiki_data["originalimage"]["source"]
             elif wiki_data.get("thumbnail", {}).get("source"):
                 img_url = wiki_data["thumbnail"]["source"]
-    except Exception:
-        pass
+    except urllib.error.URLError as e:
+        logger.warning("Wikipedia API Error for '%s': %s", query, e)
 
     try:
         from google import genai
